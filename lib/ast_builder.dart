@@ -28,6 +28,22 @@ void main() {
       'Variable': {'name': 'String'},
     },
   }, "tacky_ir.g.dart", directives: [Directive.partOf('tacky_ir.dart')]);
+
+  generate({
+    'X8664Instr': {
+      'Move': {'src': 'X8664Operand', 'dst': 'X8664Operand'},
+      'Unary': {'operator': 'X8664UnaryOperator', 'operand': 'X8664Operand'},
+      'Binary': {'operator': 'X8664BinaryOperator', 'lhs': 'X8664Operand', 'rhs': 'X8664Operand'},
+      'AllocateStack': {'amount': 'int'},
+      'Return': {},
+    },
+    'X8664Operand': {
+      'Immediate': {'value': 'String'},
+      'Register': {'reg': 'X8664Register', 'size': 'X8664RegisterSize'},
+      'Pseudo': {'id': 'String'},
+      'Stack': { 'value': 'int' },
+    },
+  }, "x86_64_asm.g.dart", directives: [Directive.partOf('x86_64_asm.dart')]);
 }
 
 void generate(Grammar grammar, String outputPath, {List<Directive>? directives}) {

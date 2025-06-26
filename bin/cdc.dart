@@ -95,11 +95,13 @@ Future main(List<String> arguments) async {
   final tokens = await o.inputFile.readAsTokens();
 
   final program = Parser.parse(tokens);
-  
-  _logger.verbose(program.toString());
+  // _logger.verbose(program.toString());
 
   final programIr = TackyIRGenerator.generate(program);
-  _logger.verbose(programIr.toString());
+  // _logger.verbose(programIr.toString());
+
+  final programAsm = X8664Generator().generate(programIr);
+  _logger.verbose(programAsm.emit());
 }
 
 extension on Uri {
