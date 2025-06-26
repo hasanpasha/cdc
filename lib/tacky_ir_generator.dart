@@ -3,7 +3,7 @@ import 'package:cdc/ast.dart';
 import 'package:cdc/tacky_ir.dart';
 import 'package:cdc/token.dart';
 
-class TackyIRGenerator implements StmtVisitor<void>, ExprVisitor<Value> {
+class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value> {
   List<Instr> _instrs = [];
   int _tmpCount = 0;
 
@@ -32,8 +32,8 @@ class TackyIRGenerator implements StmtVisitor<void>, ExprVisitor<Value> {
   }
 
   @override
-  Instr visitReturnStmt(ReturnStmt ret) {
-    return ReturnInstr(ret.expr.accept(this));
+  void visitReturnStmt(ReturnStmt ret) {
+    _instrs.add(ReturnInstr(ret.expr.accept(this)));
   }
   
   @override

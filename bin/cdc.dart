@@ -3,13 +3,11 @@ import 'dart:io';
 
 import 'package:cdc/lexer.dart';
 import 'package:cdc/parser.dart';
+import 'package:cdc/tacky_ir_generator.dart';
 import 'package:cdc/token.dart';
-import 'package:file/local.dart';
 import 'package:parse_args/parse_args.dart';
 import 'package:thin_logger/thin_logger.dart';
 
-
-final _fs = LocalFileSystem();
 
 final _logger = Logger();
 
@@ -102,6 +100,9 @@ Future main(List<String> arguments) async {
   final program = Parser.parse(tokens);
   
   _logger.verbose(program.toString());
+
+  final programIr = TackyIRGenerator.generate(program);
+  _logger.verbose(programIr.toString());
 }
 
 extension on Uri {

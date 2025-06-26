@@ -4,6 +4,9 @@ class ProgramIR {
   final FunctionIR functionDefinition;
 
   ProgramIR(this.functionDefinition);
+  
+  @override
+  String toString() => TackyIRPrettier.prettify(this);
 }
 
 class FunctionIR {
@@ -27,34 +30,24 @@ enum BinaryOperator {
 }
 
 class TackyIRPrettier implements InstrVisitor<String>, ValueVisitor<String> {
+  static String prettify(ProgramIR program) => TackyIRPrettier().visitProgram(program);
+  
+  String visitProgram(ProgramIR program) => "ProgramIR(${visitFunction(program.functionDefinition)})";
+
+  String visitFunction(FunctionIR func) => "Function(${func.name}, ${func.instructions.map((ins) => ins.accept(this)).join(', ')})";
+  
   @override
-  String visitBinaryInstr(BinaryInstr node) {
-    // TODO: implement visitBinaryInstr
-    throw UnimplementedError();
-  }
+  String visitReturnInstr(ReturnInstr returnInstr) => "Return(${returnInstr.value.accept(this)})";
+  
+  @override
+  String visitBinaryInstr(BinaryInstr binaryInstr) => "Binary(${binaryInstr.operator}, ${binaryInstr.lhs.accept(this)}, ${binaryInstr.rhs.accept(this)}, ${binaryInstr.dst.accept(this)})";
 
   @override
-  String visitConstantValue(ConstantValue node) {
-    // TODO: implement visitConstantValue
-    throw UnimplementedError();
-  }
+  String visitUnaryInstr(UnaryInstr unaryInstr) => "Unary(${unaryInstr.operator}, ${unaryInstr.src.accept(this)}, ${unaryInstr.dst.accept(this)})";
 
   @override
-  String visitReturnInstr(ReturnInstr node) {
-    // TODO: implement visitReturnInstr
-    throw UnimplementedError();
-  }
+  String visitConstantValue(ConstantValue constantValue) => "Constant(${constantValue.value})";
 
   @override
-  String visitUnaryInstr(UnaryInstr node) {
-    // TODO: implement visitUnaryInstr
-    throw UnimplementedError();
-  }
-
-  @override
-  String visitVariableValue(VariableValue node) {
-    // TODO: implement visitVariableValue
-    throw UnimplementedError();
-  }
-
+  String visitVariableValue(VariableValue variableValue) => "Variable(${variableValue.name})";
 }
