@@ -24,10 +24,10 @@ class Options {
   bool get onlyParse => _onlyParse;
   var _onlyParse = false;
 
-  bool get isGenTacky => _onlyGenTacky;
+  bool get onlyGenTacky => _onlyGenTacky;
   var _onlyGenTacky = false;
 
-  bool get isGenASM => _onlyGenASM;
+  bool get onlyGenASM => _onlyGenASM;
   var _onlyGenASM = false;
 
   Future parse(List<String> args) async {
@@ -90,21 +90,104 @@ Future main(List<String> arguments) async {
     await o.parse(arguments);
   } on Exception catch (e) {
     _logger.error(e.toString());
+    exit(1);
   }
 
-  final tokens = await o.inputFile.readAsTokens();
+  final gccPath = Uri.file('/usr/bin/gcc');
+  int exitCode = 0;
+
+  final expandedFile = o.inputFile.replaceExtension('.cc');
+  if ((exitCode = await command(gccPath, ['-E', '-P', o.inputFile.path, '-o', expandedFile.path])) != 0) {
+    _logger.error("failed expanding .c file: $exitCode");
+    exit(exitCode);
+  }
+
+  final tokens = await expandedFile.readAsTokens();
+  await File(expandedFile.path).delete();
+  if (o.isVerbose) {
+    for (var token in tokens) {
+      _logger.out(token.toString());
+    }
+  }
+
+  if (o.onlyLex) {
+    exit(0);
+  }
 
   final program = Parser.parse(tokens);
-  // _logger.verbose(program.toString());
+  if (o.isVerbose) {
+    _logger.verbose(program.toString());
+  }
+  if (o.onlyParse) {
+    exit(0);
+  }
 
   final programIr = TackyIRGenerator.generate(program);
-  // _logger.verbose(programIr.toString());
+  if (o.isVerbose) {
+    _logger.verbose(programIr.toString());
+  }
+  if (o.onlyGenTacky) {
+    exit(0);
+  }
 
+  
   final programAsm = X8664Generator().generate(programIr);
-  _logger.verbose(programAsm.emit());
+  if (o.isVerbose) { 
+    _logger.verbose(programAsm.toString());
+  }
+  if (o.onlyGenASM) {
+    exit(0);
+  }
+
+  final asmOutPath = o.inputFile.replaceExtension('.s');
+  await File(asmOutPath.path).writeAsString(programAsm.emit(), flush: true);
+
+  final binPath = o.inputFile.replaceExtension('');
+  if ((exitCode = await command(gccPath, [asmOutPath.path, '-o', binPath.path])) != 0) {
+    _logger.error("failed compiling file $asmOutPath: $exitCode");
+    exit(exitCode);
+  }
+  await File(asmOutPath.path).delete();
 }
 
 extension on Uri {
   Future<String> read() async => await File(path).readAsString();
   Future<List<Token>> readAsTokens() async => Lexer(await read(), path).toList();
+
+  String baseFilename() {
+    return pathSegments.last;
+  }
+
+  String baseFilenameWithoutExtension() {
+    final parts = baseFilename().split('.');
+    if (parts.length == 1) return parts.first;
+    parts.removeLast();
+    return parts.join();
+  }
+
+  Uri replaceExtension(String newExtension) {
+    final newFilenamem = "${baseFilenameWithoutExtension()}$newExtension";
+    final pathSegms = pathSegments.toList();
+    pathSegms.removeLast();
+    pathSegms.add(newFilenamem);
+    final newPath = replace(pathSegments: pathSegms);
+    return newPath;
+  }
+}
+
+Future<int> command(Uri binUri, List<String> args, {bool verbose = false}) async {
+  final binPath = binUri.hasAbsolutePath ? binUri.path : "./${binUri.path}";
+
+  print("\$ $binPath ${args.join(' ')}");
+  final result = await Process.run(binPath, args);
+  
+  if (verbose) {
+    stdout.write(result.stdout.toString());
+  }
+  
+  if (result.exitCode != 0) {
+    print("abnormal exit ${result.exitCode}: ${result.stderr}");
+  }
+  
+  return result.exitCode;
 }
