@@ -1,15 +1,20 @@
 import 'token.dart';
 
-class Tokens extends Iterable<Token> {
+class Lexer extends Iterable<Token> {
   final String _sourceCode;
   final List<Token> _tokens = [];
   final Location _location;
   int _start = 0;
   int _current = 0;
 
-  Tokens(this._sourceCode, [String? filepath]) : 
+  static List<Token> lex(String source, [String? filepath]) {
+    final lexer = Lexer(source, filepath);
+    return lexer.toList();
+  }
+
+  Lexer(this._sourceCode, [String? filepath]) : 
     _location = Location(1, 1, filepath) {
-    _parse();
+    _lex();
   }
 
   @override
@@ -17,22 +22,21 @@ class Tokens extends Iterable<Token> {
   
   bool get _isAtEnd => _current >= _sourceCode.length;
   
-  void _parse() {
-    while(!_isAtEnd) {
-      final Token token = _parseNext();
-      _tokens.add(token);
+  void _lex() {
+    while(true) {
+      final tok = _lexNext();
+      _tokens.add(tok);
+      if (tok.kind == TokenKind.eoi) break;
     }
-    if (_tokens.lastOrNull?.kind != TokenKind.eoi) _tokens.add(Token(TokenKind.eoi, '', _location));
   }
   
   
-  Token _parseNext() {
+  Token _lexNext() {
     _skipWhitespace();
+    if (_isAtEnd) return _token(TokenKind.eoi);
 
     _start = _current;
-
     final char = _advance();
-    if (char.isEmpty) return _token(TokenKind.eoi);
 
     if (_isAlpha(char)) {
       return _keywordOrIdentifier();
@@ -134,8 +138,8 @@ class Tokens extends Iterable<Token> {
     
     return switch (_currentLexeme()) {
       "int" => _token(TokenKind.int),
-      "void" => _token(TokenKind.void_),
-      "return" => _token(TokenKind.return_),
+      "void" => _token(TokenKind.void$),
+      "return" => _token(TokenKind.return$),
       String() => _token(TokenKind.identifier),
     };
   }
@@ -154,4 +158,8 @@ class Tokens extends Iterable<Token> {
   bool _isDigit(String char) => _digits.contains(char);
   bool _isAlphaNumeric(String char) => _isAlpha(char) || _isDigit(char);
   bool _isWhitespace(String char) => " \t\n\r".contains(char);
+}
+
+extension LexerExtension on String {
+  List<Token> lex([String? filepath]) => Lexer.lex(this, filepath);
 }

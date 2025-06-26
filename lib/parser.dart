@@ -57,7 +57,7 @@ class Parser {
     _consume(TokenKind.int, "Expect `int` at start of function.");
     final name = _consume(TokenKind.identifier, "Expect identifier name for function definition.");
     _consume(TokenKind.leftParen, "Expect a '(' at start of parameters list.");
-    _consume(TokenKind.void_, "Expect `void` as argument.");
+    _consume(TokenKind.void$, "Expect `void` as argument.");
     _consume(TokenKind.rightParen, "Expect ')' closing parameters list.");
     _consume(TokenKind.leftBraces, "Expect '{' opening a function body.");
     final Stmt body = statement();
@@ -71,7 +71,7 @@ class Parser {
   }
   
   ReturnStmt _returnStmt() {
-    final keyword = _consume(TokenKind.return_, "Expect a `return` keyword.");
+    final keyword = _consume(TokenKind.return$, "Expect a `return` keyword.");
     final expr = expression();
     _consume(TokenKind.semicolon, "Expect a ';' at the end of return statement.");
     return ReturnStmt(keyword, expr);

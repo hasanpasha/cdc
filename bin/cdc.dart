@@ -1,13 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:cdc/lexer.dart';
-import 'package:cdc/parser.dart';
-import 'package:cdc/tacky_ir_generator.dart';
-import 'package:cdc/token.dart';
 import 'package:parse_args/parse_args.dart';
 import 'package:thin_logger/thin_logger.dart';
 
+import 'package:cdc/cdc.dart';
 
 final _logger = Logger();
 
@@ -107,5 +104,5 @@ Future main(List<String> arguments) async {
 
 extension on Uri {
   Future<String> read() async => await File(path).readAsString();
-  Future<List<Token>> readAsTokens() async => Tokens(await read(), path).toList();
+  Future<List<Token>> readAsTokens() async => Lexer(await read(), path).toList();
 }
