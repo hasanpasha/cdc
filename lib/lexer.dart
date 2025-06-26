@@ -148,6 +148,9 @@ class Lexer extends Iterable<Token> {
     while (!_isAtEnd && _isDigit(_peek())) {
       _advance();
     }
+    if (_isAlpha(_peek())) {
+      throw Exception("Found alpha characters attached to number.");
+    }
     return _token(TokenKind.constant);
   }
 
