@@ -1,14 +1,12 @@
 name: cdc
 description: A compiler for a subset of C programming language
 version: 1.0.0
-# repository: https://github.com/my_org/my_repo
+repository: https://github.com/hasanpasha/cdc
 
 environment:
   sdk: ^3.9.0-100.2.beta
 
-# Add regular dependencies here.
 dependencies:
-  # path: ^1.8.0
   parse_args: ^0.13.4
   file: ^7.0.1
   thin_logger: ^0.2.2
