@@ -34,6 +34,8 @@ void main() {
       'Move': {'src': 'X8664Operand', 'dst': 'X8664Operand'},
       'Unary': {'operator': 'X8664UnaryOperator', 'operand': 'X8664Operand'},
       'Binary': {'operator': 'X8664BinaryOperator', 'lhs': 'X8664Operand', 'rhs': 'X8664Operand'},
+      'Idiv': {'operand': 'X8664Operand'},
+      'Cdq': {},
       'AllocateStack': {'amount': 'int'},
       'Return': {},
     },

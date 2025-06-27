@@ -105,24 +105,26 @@ Future main(List<String> arguments) async {
   final tokens = await expandedFile.readAsTokens();
   await File(expandedFile.path).delete();
   if (o.isVerbose) {
-    for (var token in tokens) {
-      _logger.out(token.toString());
-    }
+    _logger.verbose(tokens.toString());
   }
 
   if (o.onlyLex) {
+    for (var token in tokens) {
+      _logger.out(token.toString());
+    }
     exit(0);
   }
 
-  final program = Parser.parse(tokens);
+  final programAst = Parser.parse(tokens, constantFold: false);
   if (o.isVerbose) {
-    _logger.verbose(program.toString());
+    _logger.verbose(programAst.toString());
   }
   if (o.onlyParse) {
+    _logger.out(programAst.prettyTree());
     exit(0);
   }
 
-  final programIr = TackyIRGenerator.generate(program);
+  final programIr = TackyIRGenerator.generate(programAst);
   if (o.isVerbose) {
     _logger.verbose(programIr.toString());
   }
@@ -147,7 +149,7 @@ Future main(List<String> arguments) async {
     _logger.error("failed compiling file $asmOutPath: $exitCode");
     exit(exitCode);
   }
-  await File(asmOutPath.path).delete();
+  // await File(asmOutPath.path).delete();
 }
 
 extension on Uri {

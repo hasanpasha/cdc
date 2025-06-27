@@ -10,6 +10,8 @@ abstract class X8664InstrVisitor<R> {
   R visitMoveX8664Instr(MoveX8664Instr moveX8664Instr);
   R visitUnaryX8664Instr(UnaryX8664Instr unaryX8664Instr);
   R visitBinaryX8664Instr(BinaryX8664Instr binaryX8664Instr);
+  R visitIdivX8664Instr(IdivX8664Instr idivX8664Instr);
+  R visitCdqX8664Instr(CdqX8664Instr cdqX8664Instr);
   R visitAllocateStackX8664Instr(
     AllocateStackX8664Instr allocateStackX8664Instr,
   );
@@ -54,6 +56,26 @@ class BinaryX8664Instr extends X8664Instr {
   @override
   R accept<R>(X8664InstrVisitor<R> visitor) {
     return visitor.visitBinaryX8664Instr(this);
+  }
+}
+
+class IdivX8664Instr extends X8664Instr {
+  IdivX8664Instr(this.operand);
+
+  final X8664Operand operand;
+
+  @override
+  R accept<R>(X8664InstrVisitor<R> visitor) {
+    return visitor.visitIdivX8664Instr(this);
+  }
+}
+
+class CdqX8664Instr extends X8664Instr {
+  CdqX8664Instr();
+
+  @override
+  R accept<R>(X8664InstrVisitor<R> visitor) {
+    return visitor.visitCdqX8664Instr(this);
   }
 }
 

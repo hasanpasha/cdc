@@ -44,42 +44,33 @@ class X8664Generator implements AsmGenerator, InstrVisitor, ValueVisitor<X8664Op
     final dst = binaryInstr.dst.accept(this);
 
     switch(binaryInstr.operator) {
-      case BinaryOperator.add || BinaryOperator.subtract:
-        final temp = RegisterX8664Operand(X8664Register.xa, X8664RegisterSize.word);
+      case BinaryOperator.add || BinaryOperator.subtract || BinaryOperator.multiply:
         final X8664BinaryOperator operatpr = switch (binaryInstr.operator) {
           BinaryOperator.add => X8664BinaryOperator.add,
           BinaryOperator.subtract => X8664BinaryOperator.sub,
+          BinaryOperator.multiply => X8664BinaryOperator.imul,
           _ => throw Exception("unexpect operator ${binaryInstr.operator}")
         };
         _instrs.addAll([
-          MoveX8664Instr(lhs, temp),
-          BinaryX8664Instr(operatpr, temp, rhs),
-          MoveX8664Instr(temp, dst)
-        ]);
-      case BinaryOperator.multiply:
-        final temp = RegisterX8664Operand(X8664Register.xa, X8664RegisterSize.word);
-        _instrs.addAll([
-          BinaryX8664Instr(X8664BinaryOperator.xor, temp, temp),
-          MoveX8664Instr(lhs, temp),
-          UnaryX8664Instr(X8664UnaryOperator.mul, rhs),
-          MoveX8664Instr(temp, dst)
+          MoveX8664Instr(lhs, dst),
+          BinaryX8664Instr(operatpr, rhs, dst),
         ]);
       case BinaryOperator.divide:
-        final temp = RegisterX8664Operand(X8664Register.xa, X8664RegisterSize.word);
+        final eax = RegisterX8664Operand(X8664Register.xa, X8664RegisterSize.word);
         _instrs.addAll([
-          BinaryX8664Instr(X8664BinaryOperator.xor, temp, temp),
-          MoveX8664Instr(lhs, temp),
-          UnaryX8664Instr(X8664UnaryOperator.div, rhs),
-          MoveX8664Instr(temp, dst)
+          MoveX8664Instr(lhs, eax),
+          CdqX8664Instr(),
+          IdivX8664Instr(rhs),
+          MoveX8664Instr(eax, dst),
         ]);
       case BinaryOperator.remainder:
-        final temp = RegisterX8664Operand(X8664Register.xa, X8664RegisterSize.word);
-        final rem = RegisterX8664Operand(X8664Register.xd, X8664RegisterSize.word);
+        final eax = RegisterX8664Operand(X8664Register.xa, X8664RegisterSize.word);
+        final edx = RegisterX8664Operand(X8664Register.xd, X8664RegisterSize.word);
         _instrs.addAll([
-          BinaryX8664Instr(X8664BinaryOperator.xor, temp, temp),
-          MoveX8664Instr(lhs, temp),
-          UnaryX8664Instr(X8664UnaryOperator.div, rhs),
-          MoveX8664Instr(rem, dst),
+          MoveX8664Instr(lhs, eax),
+          CdqX8664Instr(),
+          IdivX8664Instr(rhs),
+          MoveX8664Instr(edx, dst),
         ]);
     }
   }
@@ -134,11 +125,18 @@ class FixupInstructions implements X8664InstrVisitor<List<X8664Instr>> {
   
   @override
   List<X8664Instr> visitBinaryX8664Instr(BinaryX8664Instr binaryX8664Instr) {
-    if ((binaryX8664Instr.lhs is StackX8664Operand && binaryX8664Instr.rhs is StackX8664Operand) || binaryX8664Instr.lhs is ImmediateX8664Operand) {
-      final temp = RegisterX8664Operand(X8664Register.r10, X8664RegisterSize.word);
+    if (binaryX8664Instr.lhs is StackX8664Operand && binaryX8664Instr.rhs is StackX8664Operand) {
+      final r10d = RegisterX8664Operand(X8664Register.r10, X8664RegisterSize.word);
       return [
-        MoveX8664Instr(binaryX8664Instr.lhs, temp),
-        BinaryX8664Instr(binaryX8664Instr.operator, temp, binaryX8664Instr.rhs),
+        MoveX8664Instr(binaryX8664Instr.lhs, r10d),
+        BinaryX8664Instr(binaryX8664Instr.operator, r10d, binaryX8664Instr.rhs),
+      ];
+    } else if (binaryX8664Instr.operator == X8664BinaryOperator.imul && binaryX8664Instr.rhs is StackX8664Operand) {
+      final r11d = RegisterX8664Operand(X8664Register.r11, X8664RegisterSize.word);
+      return [
+        MoveX8664Instr(binaryX8664Instr.rhs, r11d),
+        BinaryX8664Instr(binaryX8664Instr.operator, binaryX8664Instr.lhs, r11d),
+        MoveX8664Instr(r11d, binaryX8664Instr.rhs),
       ];
     } else {
       return [binaryX8664Instr];
@@ -148,12 +146,12 @@ class FixupInstructions implements X8664InstrVisitor<List<X8664Instr>> {
   @override
   List<X8664Instr> visitMoveX8664Instr(MoveX8664Instr moveX8664Instr) {
     if (moveX8664Instr.src is StackX8664Operand && moveX8664Instr.dst is StackX8664Operand) {
-      final temp = RegisterX8664Operand(X8664Register.r10, X8664RegisterSize.word);
+      final r10d = RegisterX8664Operand(X8664Register.r10, X8664RegisterSize.word);
       return [
-        MoveX8664Instr(moveX8664Instr.src, temp),
-        MoveX8664Instr(temp, moveX8664Instr.dst),
+        MoveX8664Instr(moveX8664Instr.src, r10d),
+        MoveX8664Instr(r10d, moveX8664Instr.dst),
       ];
-    } else {
+    }  else {
       return [moveX8664Instr];
     }
   }
@@ -173,6 +171,18 @@ class FixupInstructions implements X8664InstrVisitor<List<X8664Instr>> {
   
   @override
   List<X8664Instr> visitReturnX8664Instr(ReturnX8664Instr returnX8664Instr) => [returnX8664Instr];
+  
+  @override
+  List<X8664Instr> visitCdqX8664Instr(CdqX8664Instr cdqX8664Instr) => [cdqX8664Instr];
+  
+  @override
+  List<X8664Instr> visitIdivX8664Instr(IdivX8664Instr idivX8664Instr) {
+    final r10d = RegisterX8664Operand(X8664Register.r10, X8664RegisterSize.word);
+    return [
+      MoveX8664Instr(idivX8664Instr.operand, r10d),
+      IdivX8664Instr(r10d),
+    ];
+  }
 }
 
 class PseudoEliminator implements X8664InstrVisitor<X8664Instr>, X8664OperandVisitor<X8664Operand> {
@@ -191,7 +201,6 @@ class PseudoEliminator implements X8664InstrVisitor<X8664Instr>, X8664OperandVis
     return X8664FunctionASM(function.name, newInstrs);
   }
   
-  
   @override
   X8664Instr visitAllocateStackX8664Instr(AllocateStackX8664Instr allocateStackX8664Instr) => allocateStackX8664Instr;
   
@@ -207,11 +216,12 @@ class PseudoEliminator implements X8664InstrVisitor<X8664Instr>, X8664OperandVis
     MoveX8664Instr(moveX8664Instr.src.accept(this), moveX8664Instr.dst.accept(this));
   
   @override
-  X8664Operand visitPseudoX8664Operand(PseudoX8664Operand pseudoX8664Operand) => StackX8664Operand(_variablesOffset[pseudoX8664Operand.id] ?? (() {
-    _stackOffset += 4;
-    _variablesOffset[pseudoX8664Operand.id] = _stackOffset;
-    return _stackOffset;
-  })());
+  X8664Operand visitPseudoX8664Operand(PseudoX8664Operand pseudoX8664Operand) => 
+    StackX8664Operand(_variablesOffset[pseudoX8664Operand.id] ?? (() {
+      _stackOffset += 4;
+      _variablesOffset[pseudoX8664Operand.id] = _stackOffset;
+      return _stackOffset;
+    })());
   
   @override
   X8664Operand visitRegisterX8664Operand(RegisterX8664Operand registerX8664Operand) => registerX8664Operand;
@@ -225,4 +235,11 @@ class PseudoEliminator implements X8664InstrVisitor<X8664Instr>, X8664OperandVis
   @override
   X8664Instr visitUnaryX8664Instr(UnaryX8664Instr unaryX8664Instr) =>
     UnaryX8664Instr(unaryX8664Instr.operator, unaryX8664Instr.operand.accept(this));
+    
+  @override
+  X8664Instr visitCdqX8664Instr(CdqX8664Instr cdqX8664Instr) => cdqX8664Instr;
+
+  @override
+  X8664Instr visitIdivX8664Instr(IdivX8664Instr idivX8664Instr) => 
+    IdivX8664Instr(idivX8664Instr.operand.accept(this));
 }
