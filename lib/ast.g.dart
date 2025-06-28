@@ -33,6 +33,7 @@ abstract class ExprVisitor<R> {
   R visitConstantExpr(ConstantExpr constantExpr);
   R visitUnaryExpr(UnaryExpr unaryExpr);
   R visitBinaryExpr(BinaryExpr binaryExpr);
+  R visitCondTernaryExpr(CondTernaryExpr condTernaryExpr);
 }
 
 class ConstantExpr extends Expr {
@@ -71,5 +72,20 @@ class BinaryExpr extends Expr {
   @override
   R accept<R>(ExprVisitor<R> visitor) {
     return visitor.visitBinaryExpr(this);
+  }
+}
+
+class CondTernaryExpr extends Expr {
+  CondTernaryExpr(this.cond, this.lhs, this.rhs);
+
+  final Expr cond;
+
+  final Expr lhs;
+
+  final Expr rhs;
+
+  @override
+  R accept<R>(ExprVisitor<R> visitor) {
+    return visitor.visitCondTernaryExpr(this);
   }
 }

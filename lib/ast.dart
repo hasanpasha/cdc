@@ -38,6 +38,12 @@ class ASTPrinter implements StmtVisitor<String>, ExprVisitor<String> {
   
   @override
   String visitConstantExpr(ConstantExpr constant) => "Constant(${constant.value})";
+  
+  @override
+  String visitCondTernaryExpr(CondTernaryExpr condTernaryExpr) {
+    // TODO implement condTernary printer
+    throw UnimplementedError();
+  }
 }
 
 class ASTPrettier implements StmtVisitor<String>, ExprVisitor<String> {
@@ -74,6 +80,12 @@ class ASTPrettier implements StmtVisitor<String>, ExprVisitor<String> {
   
   @override
   String visitConstantExpr(ConstantExpr constant) => _withIndent(() => "Constant(${constant.value})");
+  
+  @override
+  String visitCondTernaryExpr(CondTernaryExpr condTernaryExpr) => _withIndent(
+    () =>
+        "TernaryCond($_indent${condTernaryExpr.cond.accept(this)},$_indent${condTernaryExpr.lhs.accept(this)},$_indent${condTernaryExpr.rhs.accept(this)}$_indentLast)",
+  );
 }
 
 class ExprPolishNotation implements ExprVisitor<String> {
@@ -85,4 +97,10 @@ class ExprPolishNotation implements ExprVisitor<String> {
 
   @override
   String visitConstantExpr(ConstantExpr constantExpr) => constantExpr.value;
+  
+  @override
+  String visitCondTernaryExpr(CondTernaryExpr condTernaryExpr) {
+    // TODO: implement visitCondTernaryExpr
+    throw UnimplementedError();
+  }
 }

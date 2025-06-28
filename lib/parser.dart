@@ -3,6 +3,7 @@ import 'package:cdc/token.dart';
 
 enum Precedence {
   none,
+  ternaryCond,
   bor,
   bxor,
   band,
@@ -115,6 +116,7 @@ class Parser {
     .xor: PrecedenceRule(infixFn: _binary, precedence: .bxor),
     .or: PrecedenceRule(infixFn: _binary, precedence: .bor),
     .constant: PrecedenceRule(prefixFn: _constant, precedence: .primary),
+    .questionMark: PrecedenceRule(infixFn: _ternaryCond, precedence: .ternaryCond),
     // dart format on
   };
   
@@ -122,6 +124,7 @@ class Parser {
 
   Expr _parsePrecedence(Precedence precedence) {
     final PrecedenceRule rule = _peekPrecedenceRule();
+    print(_peek());
     var lhs = rule.prefix();
 
     while (!_isAtEnd && precedence <= _peekPrecedenceRule().precedence) {
@@ -133,7 +136,7 @@ class Parser {
   }
 
   Expr expression() {
-    return _parsePrecedence(.bor);
+    return _parsePrecedence(.ternaryCond);
   }
   
   BinaryExpr _binary(Expr lhs) {
@@ -194,6 +197,15 @@ class Parser {
   bool get _isAtEnd => _currentIdx == tokens.length;
   Token _peek() => tokens[_currentIdx];
   Token _advance() => tokens[_currentIdx++];
+
+  Expr _ternaryCond(Expr cond) {
+    _consume(.questionMark, "Expect '?'");
+    final lhs = expression();
+    _consume(.colon, "Expect ':' after lhs.");
+    final rhs = expression();
+
+    return CondTernaryExpr(cond, lhs, rhs);
+  }
 }
 
 class ConstantFolder implements StmtVisitor<Stmt>, ExprVisitor<Expr> {
@@ -246,5 +258,11 @@ class ConstantFolder implements StmtVisitor<Stmt>, ExprVisitor<Expr> {
     }
 
     return UnaryExpr(unaryExpr.operator, operand);
+  }
+  
+  @override
+  Expr visitCondTernaryExpr(CondTernaryExpr condTernaryExpr) {
+    // TODO: implement visitCondTernaryExpr
+    throw UnimplementedError();
   }
 }

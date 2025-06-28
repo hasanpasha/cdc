@@ -6,6 +6,7 @@ import 'package:dart_style/dart_style.dart';
 typedef Grammar = Map<String, Map<String, Map<String, String>>>;
 
 void main() {
+  // dart format off
   generate({
     'Stmt': {
       'Return': {'keyword': 'Token', 'expr': 'Expr'},
@@ -14,6 +15,7 @@ void main() {
       'Constant': {'value': 'String'},
       'Unary': {'operator': 'Token', 'operand': 'Expr'},
       'Binary': {'operator': 'Token', 'lhs': 'Expr', 'rhs': 'Expr'},
+      'CondTernary': {'cond': 'Expr', 'lhs': 'Expr', 'rhs': 'Expr'},
     },
   }, "ast.g.dart", directives: [Directive.partOf('ast.dart')]);
 

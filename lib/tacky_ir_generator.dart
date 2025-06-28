@@ -84,4 +84,10 @@ class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value> {
     final name = "tmp.${_tmpCount++}";
     return VariableValue(name);
   }
+  
+  @override
+  Value visitCondTernaryExpr(CondTernaryExpr condTernaryExpr) {
+    // TODO: implement visitCondTernaryExpr
+    throw UnimplementedError();
+  }
 }
