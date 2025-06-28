@@ -1,0 +1,1 @@
+dart compile exe /home/hasan/Documents/coding/dart/projs/cdc/bin/cdc.dart --enable-experiment=dot-shorthands
