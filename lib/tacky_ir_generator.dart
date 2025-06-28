@@ -63,8 +63,8 @@ class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value> {
   @override
   Value visitUnaryExpr(UnaryExpr unary) {
     final UnaryOperator operator = switch(unary.operator.kind) {
-      TokenKind.hyphen => UnaryOperator.negate,
-      TokenKind.tilde => UnaryOperator.complement,
+      TokenKind.hyphen => .negate,
+      TokenKind.tilde => .complement,
       _ => throw UnimplementedError("Can't convert ${unary.operator.kind} to unary operator."),
     };
     final src = unary.operand.accept(this);

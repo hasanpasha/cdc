@@ -17,11 +17,11 @@ enum Precedence {
   }
 
   Precedence operator +(int offset) {
-    return Precedence.values.firstWhere((precedence) => precedence.index == index+offset);
+    return values.firstWhere((precedence) => precedence.index == index+offset);
   }
 
   Precedence operator -(int offset) {
-    return Precedence.values.firstWhere((precedence) => precedence.index == index-offset);
+    return values.firstWhere((precedence) => precedence.index == index-offset);
   }
 }
 
@@ -36,12 +36,12 @@ class PrecedenceRule {
   final Precedence precedence;
   final Associativity associativity;
 
-  static PrecedenceRule get none => PrecedenceRule(prefixFn: null, infixFn: null, precedence: Precedence.none);
+  static PrecedenceRule get none => PrecedenceRule(prefixFn: null, infixFn: null, precedence: .none);
 
   PrecedenceRule({Expr Function()? prefixFn, Expr Function(Expr)? infixFn, Precedence? precedence, Associativity? associativity}) : 
     _infixFn = infixFn, 
     _prefixFn = prefixFn, 
-    precedence = precedence ?? Precedence.none,
+    precedence = precedence ?? .none,
     associativity = associativity ?? Associativity.left;
     
 
@@ -70,20 +70,20 @@ class Parser {
 
   ProgramAST parseProgram() {
     final FunctionAST function = _function();
-    _consume(TokenKind.eoi, "Expect end of input.");
+    _consume(.eoi, "Expect end of input.");
     
     return ProgramAST(function: function);
   }
   
   FunctionAST _function() {
-    _consume(TokenKind.int, "Expect `int` at start of function.");
-    final name = _consume(TokenKind.identifier, "Expect identifier name for function definition.");
-    _consume(TokenKind.leftParen, "Expect a '(' at start of parameters list.");
-    _consume(TokenKind.void$, "Expect `void` as argument.");
-    _consume(TokenKind.rightParen, "Expect ')' closing parameters list.");
-    _consume(TokenKind.leftBraces, "Expect '{' opening a function body.");
+    _consume(.int, "Expect `int` at start of function.");
+    final name = _consume(.identifier, "Expect identifier name for function definition.");
+    _consume(.leftParen, "Expect a '(' at start of parameters list.");
+    _consume(.void$, "Expect `void` as argument.");
+    _consume(.rightParen, "Expect ')' closing parameters list.");
+    _consume(.leftBraces, "Expect '{' opening a function body.");
     final Stmt body = statement();
-    _consume(TokenKind.rightBraces, "Expect '}' closing a function body.");
+    _consume(.rightBraces, "Expect '}' closing a function body.");
 
     return FunctionAST(name: name, body: body);
   }
@@ -93,32 +93,32 @@ class Parser {
   }
   
   ReturnStmt _returnStmt() {
-    final keyword = _consume(TokenKind.return$, "Expect a `return` keyword.");
+    final keyword = _consume(.return$, "Expect a `return` keyword.");
     final expr = expression();
-    _consume(TokenKind.semicolon, "Expect a ';' at the end of return statement.");
+    _consume(.semicolon, "Expect a ';' at the end of return statement.");
     return ReturnStmt(keyword, expr);
   }
 
   
   Map<TokenKind, PrecedenceRule> get _rules => {
     // dart format off
-    TokenKind.plus: PrecedenceRule(infixFn: _binary, precedence: Precedence.term),
-    TokenKind.hyphen: PrecedenceRule(prefixFn: _unary, infixFn: _binary, precedence: Precedence.term),
-    TokenKind.asterisk: PrecedenceRule(infixFn: _binary, precedence: Precedence.factor),
-    TokenKind.forwardSlash: PrecedenceRule(infixFn: _binary, precedence: Precedence.factor),
-    TokenKind.percent: PrecedenceRule(infixFn: _binary, precedence: Precedence.factor),
-    TokenKind.tilde: PrecedenceRule(prefixFn: _unary, precedence: Precedence.unary),
-    TokenKind.leftParen: PrecedenceRule(prefixFn: _group, precedence: Precedence.primary),
-    TokenKind.lessLess: PrecedenceRule(infixFn: _binary, precedence: Precedence.shift),
-    TokenKind.greaterGreater: PrecedenceRule(infixFn: _binary, precedence: Precedence.shift),
-    TokenKind.and: PrecedenceRule(infixFn: _binary,precedence: Precedence.band),
-    TokenKind.xor: PrecedenceRule(infixFn: _binary, precedence: Precedence.bxor),
-    TokenKind.or: PrecedenceRule(infixFn: _binary, precedence: Precedence.bor),
-    TokenKind.constant: PrecedenceRule(prefixFn: _constant, precedence: Precedence.primary),
+    .plus: PrecedenceRule(infixFn: _binary, precedence: .term),
+    .hyphen: PrecedenceRule(prefixFn: _unary, infixFn: _binary, precedence: .term),
+    .asterisk: PrecedenceRule(infixFn: _binary, precedence: .factor),
+    .forwardSlash: PrecedenceRule(infixFn: _binary, precedence: .factor),
+    .percent: PrecedenceRule(infixFn: _binary, precedence: .factor),
+    .tilde: PrecedenceRule(prefixFn: _unary, precedence: .unary),
+    .leftParen: PrecedenceRule(prefixFn: _group, precedence: .primary),
+    .lessLess: PrecedenceRule(infixFn: _binary, precedence: .shift),
+    .greaterGreater: PrecedenceRule(infixFn: _binary, precedence: .shift),
+    .and: PrecedenceRule(infixFn: _binary,precedence: .band),
+    .xor: PrecedenceRule(infixFn: _binary, precedence: .bxor),
+    .or: PrecedenceRule(infixFn: _binary, precedence: .bor),
+    .constant: PrecedenceRule(prefixFn: _constant, precedence: .primary),
     // dart format on
   };
   
-  PrecedenceRule _peekPrecedenceRule() => _rules[_peek().kind] ?? PrecedenceRule.none;
+  PrecedenceRule _peekPrecedenceRule() => _rules[_peek().kind] ?? .none;
 
   Expr _parsePrecedence(Precedence precedence) {
     final PrecedenceRule rule = _peekPrecedenceRule();
@@ -133,45 +133,45 @@ class Parser {
   }
 
   Expr expression() {
-    return _parsePrecedence(Precedence.bor);
+    return _parsePrecedence(.bor);
   }
   
   BinaryExpr _binary(Expr lhs) {
     final operator = _consumeOneOf([
-      TokenKind.plus,
-      TokenKind.hyphen,
-      TokenKind.asterisk,
-      TokenKind.forwardSlash,
-      TokenKind.percent,
-      TokenKind.and,
-      TokenKind.or,
-      TokenKind.xor,
-      TokenKind.lessLess,
-      TokenKind.greaterGreater,
+      .plus,
+      .hyphen,
+      .asterisk,
+      .forwardSlash,
+      .percent,
+      .and,
+      .or,
+      .xor,
+      .lessLess,
+      .greaterGreater,
     ]);
     
     final nextRule = _rules[operator.kind]!;
-    final rhs = _parsePrecedence((nextRule.associativity == Associativity.left) ? nextRule.precedence + 1 : nextRule.precedence);
+    final rhs = _parsePrecedence((nextRule.associativity == .left) ? nextRule.precedence + 1 : nextRule.precedence);
   
     return BinaryExpr(operator, lhs, rhs);
   }
 
   UnaryExpr _unary() {
-    final operator = _consumeOneOf([TokenKind.hyphen, TokenKind.tilde]);
+    final operator = _consumeOneOf([.hyphen, .tilde]);
     final operand = _parsePrecedence(.unary);
 
     return UnaryExpr(operator, operand);
   }
 
   Expr _group() {
-    _consume(TokenKind.leftParen, "Expect '(' before group expr.");
+    _consume(.leftParen, "Expect '(' before group expr.");
     final expr = expression();
-    _consume(TokenKind.rightParen, "Expect ')' after group expr.");
+    _consume(.rightParen, "Expect ')' after group expr.");
     return expr;
   }
   
   ConstantExpr _constant() {
-    final constant = _consume(TokenKind.constant, "Expect a constant.");
+    final constant = _consume(.constant, "Expect a constant.");
     return ConstantExpr(constant.lexeme);
   }
   
@@ -212,11 +212,11 @@ class ConstantFolder implements StmtVisitor<Stmt>, ExprVisitor<Expr> {
       final left = int.parse(lhs.value);
       final right = int.parse(rhs.value);
       final result = switch (binaryExpr.operator.kind) {
-        TokenKind.plus => left+right,
-        TokenKind.hyphen => left-right,
-        TokenKind.asterisk => left*right,
-        TokenKind.forwardSlash => left/right,
-        TokenKind.percent => left%right,
+        .plus => left+right,
+        .hyphen => left-right,
+        .asterisk => left*right,
+        .forwardSlash => left/right,
+        .percent => left%right,
         _ => throw Exception("unexpected operator: ${binaryExpr.operator.kind.name}"),
       };
       return ConstantExpr("${result.toInt()}");
@@ -238,8 +238,8 @@ class ConstantFolder implements StmtVisitor<Stmt>, ExprVisitor<Expr> {
     if (operand is ConstantExpr) {
       final right = int.parse(operand.value);
       final result = switch (unaryExpr.operator.kind) {
-        TokenKind.hyphen => -right,
-        TokenKind.tilde => ~right,
+        .hyphen => -right,
+        .tilde => ~right,
         _ => throw Exception("unexpected operator: ${unaryExpr.operator.kind.name}"),
       };
       return ConstantExpr("$result");

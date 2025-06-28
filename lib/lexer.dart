@@ -26,14 +26,14 @@ class Lexer extends Iterable<Token> {
     while(true) {
       final tok = _lexNext();
       _tokens.add(tok);
-      if (tok.kind == TokenKind.eoi) break;
+      if (tok.kind == .eoi) break;
     }
   }
   
   
   Token _lexNext() {
     _skipWhitespace();
-    if (_isAtEnd) return _token(TokenKind.eoi);
+    if (_isAtEnd) return _token(.eoi);
 
     _start = _current;
     final char = _advance();
@@ -44,23 +44,23 @@ class Lexer extends Iterable<Token> {
       return _number();
     } else {
       return switch (char) {
-        '(' => _token(TokenKind.leftParen),
-        ')' => _token(TokenKind.rightParen),
-        '{' => _token(TokenKind.leftBraces),
-        '}' => _token(TokenKind.rightBraces),
-        ';' => _token(TokenKind.semicolon),
-        '~' => _token(TokenKind.tilde),
-        '-' => _token(_match(char) ? TokenKind.hyphenHyphen : TokenKind.hyphen),
-        '+' => _token(_match(char) ? TokenKind.plusPlus : TokenKind.plus),
-        '*' => _token(TokenKind.asterisk),
-        '/' => _token(TokenKind.forwardSlash),
-        '%' => _token(TokenKind.percent),
-        '&' => _token(_match(char) ? TokenKind.andAnd : TokenKind.and),
-        '|' => _token(_match(char) ? TokenKind.orOr : TokenKind.or),
-        '^' => _token(TokenKind.xor),
-        '<' => _token(_match(char) ? TokenKind.lessLess : TokenKind.less),
+        '(' => _token(.leftParen),
+        ')' => _token(.rightParen),
+        '{' => _token(.leftBraces),
+        '}' => _token(.rightBraces),
+        ';' => _token(.semicolon),
+        '~' => _token(.tilde),
+        '-' => _token(_match(char) ? .hyphenHyphen : .hyphen),
+        '+' => _token(_match(char) ? .plusPlus : .plus),
+        '*' => _token(.asterisk),
+        '/' => _token(.forwardSlash),
+        '%' => _token(.percent),
+        '&' => _token(_match(char) ? .andAnd : .and),
+        '|' => _token(_match(char) ? .orOr : .or),
+        '^' => _token(.xor),
+        '<' => _token(_match(char) ? .lessLess : .less),
         '>' => _token(
-          _match(char) ? TokenKind.greaterGreater : TokenKind.greater,
+          _match(char) ? .greaterGreater : .greater,
         ),
         String() => throw Exception("unknown char: $char."),
       };
@@ -145,10 +145,10 @@ class Lexer extends Iterable<Token> {
     }
     
     return switch (_currentLexeme()) {
-      "int" => _token(TokenKind.int),
-      "void" => _token(TokenKind.void$),
-      "return" => _token(TokenKind.return$),
-      String() => _token(TokenKind.identifier),
+      "int" => _token(.int),
+      "void" => _token(.void$),
+      "return" => _token(.return$),
+      String() => _token(.identifier),
     };
   }
   
@@ -159,7 +159,7 @@ class Lexer extends Iterable<Token> {
     if (_isAlpha(_peek())) {
       throw Exception("Found alpha characters attached to number.");
     }
-    return _token(TokenKind.constant);
+    return _token(.constant);
   }
 
   static const _alphas = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
