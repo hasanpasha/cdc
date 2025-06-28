@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:parse_args/parse_args.dart';
+// TODO: replace with a better logger
 import 'package:thin_logger/thin_logger.dart';
 
 import 'package:cdc/cdc.dart';
@@ -149,6 +150,7 @@ Future main(List<String> arguments) async {
     _logger.error("failed compiling file $asmOutPath: $exitCode");
     exit(exitCode);
   }
+  // TODO: add option to only output asm file
   // await File(asmOutPath.path).delete();
 }
 
