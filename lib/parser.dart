@@ -158,9 +158,7 @@ class Parser {
 
   UnaryExpr _unary() {
     final operator = _consumeOneOf([TokenKind.hyphen, TokenKind.tilde]);
-
-    final nextRule = _rules[operator.kind]!;
-    final operand = _parsePrecedence(nextRule.precedence);
+    final operand = _parsePrecedence(.unary);
 
     return UnaryExpr(operator, operand);
   }
