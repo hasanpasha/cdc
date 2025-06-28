@@ -26,6 +26,8 @@ enum TokenKind {
   lessLess,
   greater,
   greaterGreater,
+  questionMark,
+  colon,
   eoi,
 }
 

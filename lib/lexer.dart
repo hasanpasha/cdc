@@ -59,9 +59,9 @@ class Lexer extends Iterable<Token> {
         '|' => _token(_match(char) ? .orOr : .or),
         '^' => _token(.xor),
         '<' => _token(_match(char) ? .lessLess : .less),
-        '>' => _token(
-          _match(char) ? .greaterGreater : .greater,
-        ),
+        '>' => _token(_match(char) ? .greaterGreater : .greater),
+        '?' => _token(.questionMark),
+        ':' => _token(.colon),
         String() => throw Exception("unknown char: $char."),
       };
     }
