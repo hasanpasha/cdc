@@ -2,29 +2,31 @@
 import 'package:cdc/cdc.dart';
 import 'package:test/test.dart';
 
+
+// TODO: add more test
 void main() {
   test('lexer', () {
     expect("+-*/() 1234 main int void ++--<<>>|&^<>".lex().map((tok) => tok.kind), <TokenKind>[
-      TokenKind.plus,
-      TokenKind.hyphen,
-      TokenKind.asterisk,
-      TokenKind.forwardSlash,
-      TokenKind.leftParen,
-      TokenKind.rightParen,
-      TokenKind.constant,
-      TokenKind.identifier,
-      TokenKind.int,
-      TokenKind.void$,
-      TokenKind.plusPlus,
-      TokenKind.hyphenHyphen,
-      TokenKind.lessLess,
-      TokenKind.greaterGreater,
-      TokenKind.or,
-      TokenKind.and,
-      TokenKind.xor,
-      TokenKind.less,
-      TokenKind.greater,
-      TokenKind.eoi,
+      .plus,
+      .hyphen,
+      .asterisk,
+      .forwardSlash,
+      .leftParen,
+      .rightParen,
+      .constant,
+      .identifier,
+      .int,
+      .void$,
+      .plusPlus,
+      .hyphenHyphen,
+      .lessLess,
+      .greaterGreater,
+      .or,
+      .and,
+      .xor,
+      .less,
+      .greater,
+      .eoi,
     ]);
   });
 }
