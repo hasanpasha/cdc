@@ -14,6 +14,7 @@ class X8664ProgramASM implements ProgramASM {
   String toString() => X8664AsmPrettifier.prettify(this);
 }
 
+// TODO: move to a separate file
 class X8664AsmEmitter implements X8664InstrVisitor<String>, X8664OperandVisitor<String> {
   static String emit(X8664ProgramASM program) => X8664AsmEmitter().visitProgram(program);
   

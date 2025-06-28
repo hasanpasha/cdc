@@ -4,10 +4,12 @@ import 'package:cdc/cdc.dart';
 class X8664Generator implements AsmGenerator, InstrVisitor, ValueVisitor<X8664Operand> {
   List<X8664Instr> _instrs = [];
   
+// TODO: refactor
   @override
   ProgramASM generate(ProgramIR program) {
     var asmProgram = visitProgram(program);
 
+    // TODO: interface passess 
     asmProgram = PseudoEliminator.transform(asmProgram);
     asmProgram = FixupInstructions.transform(asmProgram);
 
@@ -115,6 +117,7 @@ class X8664Generator implements AsmGenerator, InstrVisitor, ValueVisitor<X8664Op
   }
 }
 
+// TODO: move asm passes to separate files
 class FixupInstructions implements X8664InstrVisitor<List<X8664Instr>> {
   static X8664ProgramASM transform(X8664ProgramASM asmProgram) => FixupInstructions().visitProgram(asmProgram);
   
