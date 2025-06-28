@@ -3,6 +3,10 @@ import 'package:cdc/token.dart';
 
 enum Precedence {
   none,
+  bor,
+  bxor,
+  band,
+  shift,
   term,
   factor,
   unary,
@@ -95,7 +99,9 @@ class Parser {
     return ReturnStmt(keyword, expr);
   }
 
+  
   Map<TokenKind, PrecedenceRule> get _rules => {
+    // dart format off
     TokenKind.plus: PrecedenceRule(infixFn: _binary, precedence: Precedence.term),
     TokenKind.hyphen: PrecedenceRule(prefixFn: _unary, infixFn: _binary, precedence: Precedence.term),
     TokenKind.asterisk: PrecedenceRule(infixFn: _binary, precedence: Precedence.factor),
@@ -103,7 +109,13 @@ class Parser {
     TokenKind.percent: PrecedenceRule(infixFn: _binary, precedence: Precedence.factor),
     TokenKind.tilde: PrecedenceRule(prefixFn: _unary, precedence: Precedence.unary),
     TokenKind.leftParen: PrecedenceRule(prefixFn: _group, precedence: Precedence.primary),
+    TokenKind.lessLess: PrecedenceRule(infixFn: _binary, precedence: Precedence.shift),
+    TokenKind.greaterGreater: PrecedenceRule(infixFn: _binary, precedence: Precedence.shift),
+    TokenKind.and: PrecedenceRule(infixFn: _binary,precedence: Precedence.band),
+    TokenKind.xor: PrecedenceRule(infixFn: _binary, precedence: Precedence.bxor),
+    TokenKind.or: PrecedenceRule(infixFn: _binary, precedence: Precedence.bor),
     TokenKind.constant: PrecedenceRule(prefixFn: _constant, precedence: Precedence.primary),
+    // dart format on
   };
   
   PrecedenceRule _peekPrecedenceRule() => _rules[_peek().kind] ?? PrecedenceRule.none;
@@ -121,11 +133,22 @@ class Parser {
   }
 
   Expr expression() {
-    return _parsePrecedence(Precedence.term);
+    return _parsePrecedence(Precedence.bor);
   }
   
   BinaryExpr _binary(Expr lhs) {
-    final operator = _consumeOneOf([TokenKind.plus, TokenKind.hyphen, TokenKind.asterisk, TokenKind.forwardSlash, TokenKind.percent]);
+    final operator = _consumeOneOf([
+      TokenKind.plus,
+      TokenKind.hyphen,
+      TokenKind.asterisk,
+      TokenKind.forwardSlash,
+      TokenKind.percent,
+      TokenKind.and,
+      TokenKind.or,
+      TokenKind.xor,
+      TokenKind.lessLess,
+      TokenKind.greaterGreater,
+    ]);
     
     final nextRule = _rules[operator.kind]!;
     final rhs = _parsePrecedence((nextRule.associativity == Associativity.left) ? nextRule.precedence + 1 : nextRule.precedence);

@@ -17,6 +17,15 @@ enum TokenKind {
   asterisk,
   forwardSlash,
   percent,
+  and,
+  andAnd,
+  or,
+  orOr,
+  xor,
+  less,
+  lessLess,
+  greater,
+  greaterGreater,
   eoi,
 }
 

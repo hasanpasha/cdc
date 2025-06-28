@@ -44,28 +44,34 @@ class X8664Generator implements AsmGenerator, InstrVisitor, ValueVisitor<X8664Op
     final dst = binaryInstr.dst.accept(this);
 
     switch(binaryInstr.operator) {
-      case BinaryOperator.add || BinaryOperator.subtract || BinaryOperator.multiply:
+      case .add || .subtract || .multiply || .band || .bor || .xor || .shl || .shr:
         final X8664BinaryOperator operatpr = switch (binaryInstr.operator) {
-          BinaryOperator.add => X8664BinaryOperator.add,
-          BinaryOperator.subtract => X8664BinaryOperator.sub,
-          BinaryOperator.multiply => X8664BinaryOperator.imul,
+          .add => .add,
+          .subtract => .sub,
+          .multiply => .imul,
+          .band => .and,
+          .bor => .or,
+          .xor => .xor,
+          // TODO: reconsider the use arithmatic shift
+          .shl => .sal,
+          .shr => .sar,
           _ => throw Exception("unexpect operator ${binaryInstr.operator}")
         };
         _instrs.addAll([
           MoveX8664Instr(lhs, dst),
           BinaryX8664Instr(operatpr, rhs, dst),
         ]);
-      case BinaryOperator.divide:
-        final eax = RegisterX8664Operand(X8664Register.xa, X8664RegisterSize.word);
+      case .divide:
+        final eax = RegisterX8664Operand(.xa, .word);
         _instrs.addAll([
           MoveX8664Instr(lhs, eax),
           CdqX8664Instr(),
           IdivX8664Instr(rhs),
           MoveX8664Instr(eax, dst),
         ]);
-      case BinaryOperator.remainder:
-        final eax = RegisterX8664Operand(X8664Register.xa, X8664RegisterSize.word);
-        final edx = RegisterX8664Operand(X8664Register.xd, X8664RegisterSize.word);
+      case .remainder:
+        final eax = RegisterX8664Operand(.xa, .word);
+        final edx = RegisterX8664Operand(.xd, .word);
         _instrs.addAll([
           MoveX8664Instr(lhs, eax),
           CdqX8664Instr(),
@@ -78,7 +84,7 @@ class X8664Generator implements AsmGenerator, InstrVisitor, ValueVisitor<X8664Op
   @override
   void visitReturnInstr(ReturnInstr returnInstr) {
     _instrs.addAll([
-      MoveX8664Instr(returnInstr.value.accept(this), RegisterX8664Operand(X8664Register.xa, X8664RegisterSize.word)),
+      MoveX8664Instr(returnInstr.value.accept(this), RegisterX8664Operand(.xa, .word)),
       ReturnX8664Instr(),
     ]);
   }
@@ -93,8 +99,8 @@ class X8664Generator implements AsmGenerator, InstrVisitor, ValueVisitor<X8664Op
     };
 
     _instrs.addAll([
-      UnaryX8664Instr(operator, src),
       MoveX8664Instr(src, dst),
+      UnaryX8664Instr(operator, dst),
     ]);
   }
   
@@ -125,18 +131,25 @@ class FixupInstructions implements X8664InstrVisitor<List<X8664Instr>> {
   
   @override
   List<X8664Instr> visitBinaryX8664Instr(BinaryX8664Instr binaryX8664Instr) {
-    if (binaryX8664Instr.lhs is StackX8664Operand && binaryX8664Instr.rhs is StackX8664Operand) {
-      final r10d = RegisterX8664Operand(X8664Register.r10, X8664RegisterSize.word);
+    if (binaryX8664Instr.operator == .imul && (binaryX8664Instr.lhs is! RegisterX8664Operand || binaryX8664Instr.rhs is! RegisterX8664Operand)) {
+      final r11d = RegisterX8664Operand(.r11, .word);
+      final r12d = RegisterX8664Operand(.r12, .word);
+      return [
+        MoveX8664Instr(binaryX8664Instr.lhs, r11d),
+        MoveX8664Instr(binaryX8664Instr.rhs, r12d),
+        BinaryX8664Instr(binaryX8664Instr.operator, r11d, r12d),
+        MoveX8664Instr(r12d, binaryX8664Instr.rhs),
+      ];
+    } if (<X8664BinaryOperator>[.sal, .shl, .sar, .shr].contains(binaryX8664Instr.operator)) {
+      return [
+        MoveX8664Instr(binaryX8664Instr.lhs, RegisterX8664Operand(.xc, .word)),
+        BinaryX8664Instr(binaryX8664Instr.operator, RegisterX8664Operand(.xc, .lowByte), binaryX8664Instr.rhs),
+      ];
+    } else if (binaryX8664Instr.lhs is StackX8664Operand && binaryX8664Instr.rhs is StackX8664Operand) {
+      final r10d = RegisterX8664Operand(.r10, .word);
       return [
         MoveX8664Instr(binaryX8664Instr.lhs, r10d),
         BinaryX8664Instr(binaryX8664Instr.operator, r10d, binaryX8664Instr.rhs),
-      ];
-    } else if (binaryX8664Instr.operator == X8664BinaryOperator.imul && binaryX8664Instr.rhs is StackX8664Operand) {
-      final r11d = RegisterX8664Operand(X8664Register.r11, X8664RegisterSize.word);
-      return [
-        MoveX8664Instr(binaryX8664Instr.rhs, r11d),
-        BinaryX8664Instr(binaryX8664Instr.operator, binaryX8664Instr.lhs, r11d),
-        MoveX8664Instr(r11d, binaryX8664Instr.rhs),
       ];
     } else {
       return [binaryX8664Instr];
@@ -146,10 +159,10 @@ class FixupInstructions implements X8664InstrVisitor<List<X8664Instr>> {
   @override
   List<X8664Instr> visitMoveX8664Instr(MoveX8664Instr moveX8664Instr) {
     if (moveX8664Instr.src is StackX8664Operand && moveX8664Instr.dst is StackX8664Operand) {
-      final r10d = RegisterX8664Operand(X8664Register.r10, X8664RegisterSize.word);
+      final ebx = RegisterX8664Operand(.xb, .word);
       return [
-        MoveX8664Instr(moveX8664Instr.src, r10d),
-        MoveX8664Instr(r10d, moveX8664Instr.dst),
+        MoveX8664Instr(moveX8664Instr.src, ebx),
+        MoveX8664Instr(ebx, moveX8664Instr.dst),
       ];
     }  else {
       return [moveX8664Instr];
@@ -158,15 +171,7 @@ class FixupInstructions implements X8664InstrVisitor<List<X8664Instr>> {
 
   @override
   List<X8664Instr> visitUnaryX8664Instr(UnaryX8664Instr unaryX8664Instr) {
-    if (unaryX8664Instr.operand is ImmediateX8664Operand) {
-      final temp = RegisterX8664Operand(X8664Register.r10, X8664RegisterSize.word);
-      return [
-        MoveX8664Instr(unaryX8664Instr.operand, temp),
-        UnaryX8664Instr(unaryX8664Instr.operator, temp),
-      ];
-    } else {
       return [unaryX8664Instr];
-    }
   }
   
   @override
@@ -177,7 +182,7 @@ class FixupInstructions implements X8664InstrVisitor<List<X8664Instr>> {
   
   @override
   List<X8664Instr> visitIdivX8664Instr(IdivX8664Instr idivX8664Instr) {
-    final r10d = RegisterX8664Operand(X8664Register.r10, X8664RegisterSize.word);
+    final r10d = RegisterX8664Operand(.r10, .word);
     return [
       MoveX8664Instr(idivX8664Instr.operand, r10d),
       IdivX8664Instr(r10d),

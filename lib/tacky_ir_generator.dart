@@ -39,11 +39,16 @@ class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value> {
   @override
   Value visitBinaryExpr(BinaryExpr binary) {
     final BinaryOperator operator = switch(binary.operator.kind) {
-      TokenKind.plus => BinaryOperator.add,
-      TokenKind.hyphen => BinaryOperator.subtract,
-      TokenKind.asterisk => BinaryOperator.multiply,
-      TokenKind.forwardSlash => BinaryOperator.divide,
-      TokenKind.percent => BinaryOperator.remainder,
+      .plus => .add,
+      .hyphen => .subtract,
+      .asterisk => .multiply,
+      .forwardSlash => .divide,
+      .percent => .remainder,
+      .and => .band,
+      .or => .bor,
+      .xor => .xor,
+      .lessLess => .shl,
+      .greaterGreater => .shr,
       _ => throw UnimplementedError("Can't convert ${binary.operator.kind} to binary operator."),
     };
     final lhs = binary.lhs.accept(this);

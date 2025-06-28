@@ -174,6 +174,12 @@ enum X8664Register {
     X8664RegisterSize.short: 'r11w',
     X8664RegisterSize.word: 'r11d',
     X8664RegisterSize.quadWord: 'r11',  
+  }),
+  r12({
+    X8664RegisterSize.lowByte: 'r12b',
+    X8664RegisterSize.short: 'r12w',
+    X8664RegisterSize.word: 'r12d',
+    X8664RegisterSize.quadWord: 'r12',  
   });
 
   final Map<X8664RegisterSize, String> names;
@@ -181,15 +187,22 @@ enum X8664Register {
   const X8664Register(this.names);
 }
 
+// dart format off 
 enum X8664BinaryOperator {
   add,
   sub,
   imul,
   xor,
+  and,
+  or,
+  shl,
+  sal,
+  shr,
+  sar,
 }
 
 enum X8664UnaryOperator {
   neg,
   not,
 }
-
+// dart format on

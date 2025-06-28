@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 
 void main() {
   test('lexer', () {
-    expect("+-*/() 1234 main int void".lex().map((tok) => tok.kind), <TokenKind>[
+    expect("+-*/() 1234 main int void ++--<<>>|&^<>".lex().map((tok) => tok.kind), <TokenKind>[
       TokenKind.plus,
       TokenKind.hyphen,
       TokenKind.asterisk,
@@ -15,6 +15,15 @@ void main() {
       TokenKind.identifier,
       TokenKind.int,
       TokenKind.void$,
+      TokenKind.plusPlus,
+      TokenKind.hyphenHyphen,
+      TokenKind.lessLess,
+      TokenKind.greaterGreater,
+      TokenKind.or,
+      TokenKind.and,
+      TokenKind.xor,
+      TokenKind.less,
+      TokenKind.greater,
       TokenKind.eoi,
     ]);
   });

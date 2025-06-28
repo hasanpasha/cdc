@@ -27,6 +27,11 @@ enum BinaryOperator {
   multiply,
   divide,
   remainder,
+  band,
+  bor,
+  xor,
+  shl,
+  shr,
 }
 
 class TackyIRPrettier implements InstrVisitor<String>, ValueVisitor<String> {

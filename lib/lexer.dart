@@ -43,21 +43,27 @@ class Lexer extends Iterable<Token> {
     } else if (_isDigit(char)) {
       return _number();
     } else {
-      switch (char) {
-        case '(': return _token(TokenKind.leftParen);
-        case ')': return _token(TokenKind.rightParen);
-        case '{': return _token(TokenKind.leftBraces);
-        case '}': return _token(TokenKind.rightBraces);
-        case ';': return _token(TokenKind.semicolon);
-        case '~': return _token(TokenKind.tilde);
-        case '-': return _token(TokenKind.hyphen);
-        case '+': return _token(TokenKind.plus);
-        case '*': return _token(TokenKind.asterisk);
-        case '/': return _token(TokenKind.forwardSlash);
-        case '%': return _token(TokenKind.percent);
-        default: 
-          throw Exception("unknown char: $char.");
-      }
+      return switch (char) {
+        '(' => _token(TokenKind.leftParen),
+        ')' => _token(TokenKind.rightParen),
+        '{' => _token(TokenKind.leftBraces),
+        '}' => _token(TokenKind.rightBraces),
+        ';' => _token(TokenKind.semicolon),
+        '~' => _token(TokenKind.tilde),
+        '-' => _token(_match(char) ? TokenKind.hyphenHyphen : TokenKind.hyphen),
+        '+' => _token(_match(char) ? TokenKind.plusPlus : TokenKind.plus),
+        '*' => _token(TokenKind.asterisk),
+        '/' => _token(TokenKind.forwardSlash),
+        '%' => _token(TokenKind.percent),
+        '&' => _token(_match(char) ? TokenKind.andAnd : TokenKind.and),
+        '|' => _token(_match(char) ? TokenKind.orOr : TokenKind.or),
+        '^' => _token(TokenKind.xor),
+        '<' => _token(_match(char) ? TokenKind.lessLess : TokenKind.less),
+        '>' => _token(
+          _match(char) ? TokenKind.greaterGreater : TokenKind.greater,
+        ),
+        String() => throw Exception("unknown char: $char."),
+      };
     }
 
   }
@@ -103,12 +109,14 @@ class Lexer extends Iterable<Token> {
   }
   
   bool _matchString(String needle) {
+    if (_isAtEnd) return false;
     final needleLen = needle.length;
     if (_current+needleLen >= _sourceCode.length) return false;
     return (_sourceCode.substring(_current, _current+needleLen) == needle);
   }
   
   bool _match(String needle) {
+    if (_isAtEnd) return false;
     assert (needle.length == 1);
     if (needle == _peek()) {
       _advance();
