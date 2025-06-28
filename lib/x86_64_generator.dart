@@ -63,6 +63,7 @@ class X8664Generator implements AsmGenerator, InstrVisitor, ValueVisitor<X8664Op
           MoveX8664Instr(lhs, dst),
           BinaryX8664Instr(operatpr, rhs, dst),
         ]);
+      // TODO: group BinaryOperator.[divide,remainder] asm generation into one case
       case .divide:
         final eax = RegisterX8664Operand(.xa, .word);
         _instrs.addAll([
