@@ -1,0 +1,3 @@
+set -x
+
+dart run --enable-experiment=dot-shorthands /home/hasan/Documents/coding/dart/projs/cdc/bin/cdc.dart $@
