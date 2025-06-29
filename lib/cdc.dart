@@ -6,5 +6,5 @@ export 'tacky_ir.dart';
 export 'tacky_ir_generator.dart';
 export 'asm.dart';
 export 'asm_generator.dart';
-export 'x86_64_asm.dart';
-export 'x86_64_generator.dart';
+export 'asm_generators.dart';
+export 'extensions.dart';

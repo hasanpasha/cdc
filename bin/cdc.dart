@@ -134,7 +134,7 @@ Future main(List<String> arguments) async {
   }
 
   
-  final programAsm = X8664Generator().generate(programIr);
+  final programAsm = programIr.generateAsm(.x86_64);
   if (o.isVerbose) { 
     _logger.verbose(programAsm.toString());
   }

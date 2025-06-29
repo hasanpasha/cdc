@@ -1,6 +1,8 @@
 
 import 'package:cdc/cdc.dart';
 
+import 'x86_64_asm.dart';
+
 class X8664Generator implements AsmGenerator, InstrVisitor, ValueVisitor<X8664Operand> {
   List<X8664Instr> _instrs = [];
   
