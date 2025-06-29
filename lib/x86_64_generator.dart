@@ -11,7 +11,7 @@ class X8664Generator implements AsmGenerator, InstrVisitor, ValueVisitor<X8664Op
 
     // TODO: interface passess 
     asmProgram = PseudoEliminator.transform(asmProgram);
-    asmProgram = FixupInstructions.transform(asmProgram);
+    asmProgram = InstructionsFixer.transform(asmProgram);
 
     return asmProgram;
 
@@ -119,8 +119,8 @@ class X8664Generator implements AsmGenerator, InstrVisitor, ValueVisitor<X8664Op
 }
 
 // TODO: move asm passes to separate files
-class FixupInstructions implements X8664InstrVisitor<List<X8664Instr>> {
-  static X8664ProgramASM transform(X8664ProgramASM asmProgram) => FixupInstructions().visitProgram(asmProgram);
+class InstructionsFixer implements X8664InstrVisitor<List<X8664Instr>> {
+  static X8664ProgramASM transform(X8664ProgramASM asmProgram) => InstructionsFixer().visitProgram(asmProgram);
   
   X8664ProgramASM visitProgram(X8664ProgramASM asmProgram) => X8664ProgramASM(visitFunction(asmProgram.function));
   
