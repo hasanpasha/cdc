@@ -1,0 +1,43 @@
+[
+  {
+    "name": "ast",
+    "output": "ast.g.dart",
+    "directives": [
+      {
+        "kind": "partof",
+        "value": "ast.dart"
+      }
+    ],
+    "scheme": {
+      "Stmt": {
+        "Return": {"keyword": "Token", "expr": "Expr"}
+      },
+      "Expr": {
+        "Constant": {"value": "String"},
+        "Unary": {"operator": "Token", "operand": "Expr"},
+        "Binary": {"operator": "Token", "lhs": "Expr", "rhs": "Expr"}
+      }
+    }
+  },
+  {
+    "name": "tacky_ir",
+    "output": "tacky_ir.g.dart",
+    "directives": [
+      {
+        "kind": "partof",
+        "value": "tacky_ir.dart"
+      }
+    ],
+    "scheme": {
+      "Instr": {
+        "Return": {"value": "Value"},
+        "Unary": {"operator": "UnaryOperator", "src": "Value", "dst": "Value"},
+        "Binary": {"operator": "BinaryOperator", "lhs": "Value", "rhs": "Value", "dst": "Value"}
+      },
+      "Value": {
+        "Constant": {"value": "String"},
+        "Variable": {"name": "String"}
+      }
+    }
+  }
+]
