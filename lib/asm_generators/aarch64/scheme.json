@@ -1,0 +1,28 @@
+{
+    "name": "aarch64_asm",
+    "output": "aarch64_asm.g.dart",
+    "directives": [
+        {
+            "kind": "partof",
+            "value": "aarch64_asm.dart"
+        }
+    ],
+    "scheme": {
+      "AArch64Instr": {
+        "Move": {"src": "AArch64Operand", "dst": "AArch64Operand"},
+        "Unary": {"operator": "AArch64Operator", "operand": "AArch64Operand", "dst": "AArch64Operand"},
+        "Binary": {"operator": "AArch64Operator", "lhs": "AArch64Operand", "rhs": "AArch64Operand", "dst": "AArch64Operand"},
+        "AllocateStack": {"amount": "int"},
+        "DeallocateStack": {"amount": "int"},
+        "LoadMemory": {"src": "StackAArch64Operand", "dst": "RegisterAArch64Operand"},
+        "StoreMemory": {"src": "RegisterAArch64Operand", "dst": "StackAArch64Operand"},
+        "Return": {}
+      },
+      "AArch64Operand": {
+        "Immediate": {"value": "String"},
+        "Register": {"reg": "AArch64RegisterNumber", "size": "AArch64RegisterSize"},
+        "Pseudo": {"id": "String"},
+        "Stack": { "value": "int" }
+      }
+    }
+}

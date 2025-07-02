@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cdc/cdc.dart';
 
 part 'x86_64_asm.g.dart';
@@ -9,6 +11,23 @@ class X8664ProgramASM implements ProgramASM {
 
   @override
   String emit() => X8664AsmEmitter.emit(this);
+
+  @override
+  Future<void> compile(Uri output, {bool preserveAsmFile = false}) async {
+    final asmOutput = output.replaceExtension('.s');
+    final file = await File(asmOutput.path).create();
+    await file.writeAsString(emit());
+  
+
+    if ((exitCode = await command(Uri.file("/usr/bin/gcc"), [asmOutput.path, '-o', output.path])) != 0) {
+      print("failed compiling file $asmOutput: $exitCode");
+      exit(exitCode);
+    }
+    
+    if (!preserveAsmFile) {
+      await File(asmOutput.path).delete();
+    }
+  }
 
   @override
   String toString() => X8664AsmPrettifier.prettify(this);

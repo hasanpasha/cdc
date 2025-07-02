@@ -133,66 +133,14 @@ Future main(List<String> arguments) async {
     exit(0);
   }
 
-  
-  final programAsm = programIr.generateAsm(.x86_64);
+  final programAsm = programIr.generateAsm(.aarch64);
   if (o.isVerbose) { 
     _logger.verbose(programAsm.toString());
   }
   if (o.onlyGenASM) {
+    _logger.out(programAsm.toString());
     exit(0);
   }
 
-  final asmOutPath = o.inputFile.replaceExtension('.s');
-  await File(asmOutPath.path).writeAsString(programAsm.emit(), flush: true);
-
-  final binPath = o.inputFile.replaceExtension('');
-  if ((exitCode = await command(gccPath, [asmOutPath.path, '-o', binPath.path])) != 0) {
-    _logger.error("failed compiling file $asmOutPath: $exitCode");
-    exit(exitCode);
-  }
-  // TODO: add option to only output asm file
-  // await File(asmOutPath.path).delete();
-}
-
-// TODO: refactor
-extension on Uri {
-  Future<String> read() async => await File(path).readAsString();
-  Future<List<Token>> readAsTokens() async => Lexer(await read(), path).toList();
-
-  String baseFilename() {
-    return pathSegments.last;
-  }
-
-  String baseFilenameWithoutExtension() {
-    final parts = baseFilename().split('.');
-    if (parts.length == 1) return parts.first;
-    parts.removeLast();
-    return parts.join();
-  }
-
-  Uri replaceExtension(String newExtension) {
-    final newFilenamem = "${baseFilenameWithoutExtension()}$newExtension";
-    final pathSegms = pathSegments.toList();
-    pathSegms.removeLast();
-    pathSegms.add(newFilenamem);
-    final newPath = replace(pathSegments: pathSegms);
-    return newPath;
-  }
-}
-
-Future<int> command(Uri binUri, List<String> args, {bool verbose = false}) async {
-  final binPath = binUri.hasAbsolutePath ? binUri.path : "./${binUri.path}";
-
-  print("\$ $binPath ${args.join(' ')}");
-  final result = await Process.run(binPath, args);
-  
-  if (verbose) {
-    stdout.write(result.stdout.toString());
-  }
-  
-  if (result.exitCode != 0) {
-    print("abnormal exit ${result.exitCode}: ${result.stderr}");
-  }
-  
-  return result.exitCode;
+  await programAsm.compile(o._inputFile.replaceExtension(''), preserveAsmFile: true);
 }
