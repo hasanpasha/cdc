@@ -106,7 +106,26 @@ class MoveMemoryEliminator implements AArch64InstrVisitor<List<AArch64Instr>> {
   List<AArch64Instr> visitAllocateStackAArch64Instr(AllocateStackAArch64Instr allocateStackAArch64Instr) => [allocateStackAArch64Instr];
   
   @override
-  List<AArch64Instr> visitBinaryAArch64Instr(BinaryAArch64Instr binaryAArch64Instr) => [binaryAArch64Instr];
+  List<AArch64Instr> visitBinaryAArch64Instr(BinaryAArch64Instr binaryAArch64Instr) {
+    if (binaryAArch64Instr.lhs is StackAArch64Operand || binaryAArch64Instr.dst is StackAArch64Operand || binaryAArch64Instr.rhs is StackAArch64Operand) {
+      final w4 = RegisterAArch64Operand(.of(4), .word);
+      final w5 = RegisterAArch64Operand(.of(5), .word);
+      final w6 = RegisterAArch64Operand(.of(6), .word);
+      return [
+        if (binaryAArch64Instr.lhs is StackAArch64Operand) LoadMemoryAArch64Instr(binaryAArch64Instr.lhs as StackAArch64Operand, w4),
+        if (binaryAArch64Instr.rhs is StackAArch64Operand) LoadMemoryAArch64Instr(binaryAArch64Instr.rhs as StackAArch64Operand, w5),
+        BinaryAArch64Instr(
+          binaryAArch64Instr.operator,
+          binaryAArch64Instr.lhs is StackAArch64Operand ? w4 : binaryAArch64Instr.lhs,
+          binaryAArch64Instr.rhs is StackAArch64Operand ? w5 : binaryAArch64Instr.rhs,
+          binaryAArch64Instr.dst is StackAArch64Operand ? w6 : binaryAArch64Instr.dst,
+        ),
+        if (binaryAArch64Instr.dst is StackAArch64Operand) StoreMemoryAArch64Instr(w6, binaryAArch64Instr.dst as StackAArch64Operand),
+      ];
+    } else {
+      return [binaryAArch64Instr];
+    }
+  }
   
   @override
   List<AArch64Instr> visitLoadMemoryAArch64Instr(LoadMemoryAArch64Instr loadMemoryAArch64Instr) => [loadMemoryAArch64Instr];
@@ -126,6 +145,12 @@ class MoveMemoryEliminator implements AArch64InstrVisitor<List<AArch64Instr>> {
     } else if (moveAArch64Instr.src is RegisterAArch64Operand && moveAArch64Instr.dst is StackAArch64Operand) {
       return [
         StoreMemoryAArch64Instr(moveAArch64Instr.src as RegisterAArch64Operand, moveAArch64Instr.dst as StackAArch64Operand),
+      ];
+    } else if (moveAArch64Instr.src is ImmediateAArch64Operand && moveAArch64Instr.dst is StackAArch64Operand) {
+      final w10 = RegisterAArch64Operand(.of(10), .word);
+      return [
+        MoveAArch64Instr(moveAArch64Instr.src, w10),
+        StoreMemoryAArch64Instr(w10, moveAArch64Instr.dst as StackAArch64Operand),
       ];
     } else {
       return [moveAArch64Instr];
@@ -169,12 +194,12 @@ class InstructionsFixer implements AArch64InstrVisitor<List<AArch64Instr>> {
 
   @override
   List<AArch64Instr> visitBinaryAArch64Instr(BinaryAArch64Instr binaryAArch64Instr) {
-    // if (<AArch64Operator>[.add, .sub, .and, .orr, .eor].contains(binaryAArch64Instr.operator) && binaryAArch64Instr.lhs is! RegisterAArch64Operand) {
-    //   return [
-    //     MoveAArch64Instr(binaryAArch64Instr.lhs, binaryAArch64Instr.dst),
-    //     BinaryAArch64Instr(binaryAArch64Instr.operator, binaryAArch64Instr.dst, binaryAArch64Instr.rhs, binaryAArch64Instr.dst),
-    //   ];
-    // } else if (<AArch64Operator>[.mul, .sdiv].contains(binaryAArch64Instr.operator) && (binaryAArch64Instr.lhs is! RegisterAArch64Operand || binaryAArch64Instr.rhs is! RegisterAArch64Operand)) {
+    if (<AArch64Operator>[.add, .sub, .and, .orr, .eor].contains(binaryAArch64Instr.operator) && binaryAArch64Instr.lhs is! RegisterAArch64Operand) {
+      return [
+        MoveAArch64Instr(binaryAArch64Instr.lhs, binaryAArch64Instr.dst),
+        BinaryAArch64Instr(binaryAArch64Instr.operator, binaryAArch64Instr.dst, binaryAArch64Instr.rhs, binaryAArch64Instr.dst),
+      ];
+    } else if (<AArch64Operator>[.mul, .sdiv, .lsl, .asr].contains(binaryAArch64Instr.operator) && (binaryAArch64Instr.lhs is! RegisterAArch64Operand || binaryAArch64Instr.rhs is! RegisterAArch64Operand)) {
       final w0 = RegisterAArch64Operand(.of(0), .word);
       final w1 = RegisterAArch64Operand(.of(1), .word);
       final w2 = RegisterAArch64Operand(.of(2), .word);
@@ -184,9 +209,9 @@ class InstructionsFixer implements AArch64InstrVisitor<List<AArch64Instr>> {
         BinaryAArch64Instr(binaryAArch64Instr.operator, w0, w1, w2),
         MoveAArch64Instr(w2, binaryAArch64Instr.dst),
       ];
-    // } else {
-    //   return [binaryAArch64Instr];
-    // }
+    } else {
+      return [binaryAArch64Instr];
+    }
   }
 
   @override
