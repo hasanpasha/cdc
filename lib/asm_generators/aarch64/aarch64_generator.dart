@@ -212,10 +212,19 @@ class InstructionsFixer implements AArch64InstrVisitor<List<AArch64Instr>> {
 
   @override
   List<AArch64Instr> visitBinaryAArch64Instr(BinaryAArch64Instr binaryAArch64Instr) {
-    if (<AArch64Operator>[.add, .sub, .and, .orr, .eor].contains(binaryAArch64Instr.operator) && binaryAArch64Instr.lhs is! RegisterAArch64Operand) {
+    if (<AArch64Operator>[.add, .sub].contains(binaryAArch64Instr.operator) && binaryAArch64Instr.lhs is! RegisterAArch64Operand) {
       return [
         MoveAArch64Instr(binaryAArch64Instr.lhs, binaryAArch64Instr.dst),
         BinaryAArch64Instr(binaryAArch64Instr.operator, binaryAArch64Instr.dst, binaryAArch64Instr.rhs, binaryAArch64Instr.dst),
+      ];
+    } else if (<AArch64Operator>[.and, .orr, .eor].contains(binaryAArch64Instr.operator) 
+      && binaryAArch64Instr.lhs is! RegisterAArch64Operand || binaryAArch64Instr.rhs is! RegisterAArch64Operand) {
+      final w0 = RegisterAArch64Operand(.of(0), .word);
+      final w1 = RegisterAArch64Operand(.of(1), .word);
+      return [
+        MoveAArch64Instr(binaryAArch64Instr.lhs, w0),
+        MoveAArch64Instr(binaryAArch64Instr.rhs, w1),
+        BinaryAArch64Instr(binaryAArch64Instr.operator, w0, w1, binaryAArch64Instr.dst),
       ];
     } else if (<AArch64Operator>[.mul, .sdiv, .lsl, .asr].contains(binaryAArch64Instr.operator) && (binaryAArch64Instr.lhs is! RegisterAArch64Operand || binaryAArch64Instr.rhs is! RegisterAArch64Operand)) {
       final w0 = RegisterAArch64Operand(.of(0), .word);
