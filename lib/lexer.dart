@@ -43,27 +43,27 @@ class Lexer extends Iterable<Token> {
     } else if (_isDigit(char)) {
       return _number();
     } else {
-      return switch (char) {
-        '(' => _token(.leftParen),
-        ')' => _token(.rightParen),
-        '{' => _token(.leftBraces),
-        '}' => _token(.rightBraces),
-        ';' => _token(.semicolon),
-        '~' => _token(.tilde),
-        '-' => _token(_match(char) ? .hyphenHyphen : .hyphen),
-        '+' => _token(_match(char) ? .plusPlus : .plus),
-        '*' => _token(.asterisk),
-        '/' => _token(.forwardSlash),
-        '%' => _token(.percent),
-        '&' => _token(_match(char) ? .andAnd : .and),
-        '|' => _token(_match(char) ? .orOr : .or),
-        '^' => _token(.xor),
-        '<' => _token(_match(char) ? .lessLess : .less),
-        '>' => _token(
-          _match(char) ? .greaterGreater : .greater,
-        ),
+      return _token(switch (char) {
+        '(' => .leftParen,
+        ')' => .rightParen,
+        '{' => .leftBraces,
+        '}' => .rightBraces,
+        ';' => .semicolon,
+        '~' => .tilde,
+        '-' => _match(char) ? .hyphenHyphen : .hyphen,
+        '+' => _match(char) ? .plusPlus : .plus,
+        '*' => .asterisk,
+        '/' => .forwardSlash,
+        '%' => .percent,
+        '&' => _match(char) ? .andAnd : .and,
+        '|' => _match(char) ? .orOr : .or,
+        '^' => .xor,
+        '<' => _match(char) ? .lessLess : _match('=') ? .lessEqual : .less,
+        '>' => _match(char) ? .greaterGreater : _match('=') ? .greaterEqual : .greater,
+        '=' => _match(char) ? .equalEqual : .equal,
+        '!' => _match('=') ? .bangEqual : .bang,
         String() => throw Exception("unknown char: $char."),
-      };
+      });
     }
 
   }
