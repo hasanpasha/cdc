@@ -77,6 +77,31 @@ ret""";
   @override
   String visitIdivX8664Instr(IdivX8664Instr idivX8664Instr) => 
     "idivl ${idivX8664Instr.operand.accept(this)}";
+    
+  @override
+  String visitCmpX8664Instr(CmpX8664Instr cmpX8664Instr) => 
+    "cmpl ${cmpX8664Instr.lhs.accept(this)}, ${cmpX8664Instr.rhs.accept(this)}";
+
+  @override
+  String visitJmpCCX8664Instr(JmpCCX8664Instr jmpCcx8664Instr) =>
+    "j${jmpCcx8664Instr.condCode.name} .L${jmpCcx8664Instr.identifier}";
+
+  @override
+  String visitJmpX8664Instr(JmpX8664Instr jmpX8664Instr) =>
+    "jmp .L${jmpX8664Instr.identifier}";
+
+  @override
+  String visitLabelX8664Instr(LabelX8664Instr labelX8664Instr) =>
+    ".L${labelX8664Instr.identifier}:";
+
+  @override
+  String visitSetCCX8664Instr(SetCCX8664Instr setCcx8664Instr) {
+    final operand = setCcx8664Instr.operand is RegisterX8664Operand 
+      ? RegisterX8664Operand((setCcx8664Instr.operand as RegisterX8664Operand).reg, .lowByte).accept(this)
+      : setCcx8664Instr.operand.accept(this);
+
+    return "set${setCcx8664Instr.condCode.name} $operand";
+  }
 }
 
 class X8664AsmPrettifier implements X8664InstrVisitor<String>, X8664OperandVisitor<String> {
@@ -84,19 +109,23 @@ class X8664AsmPrettifier implements X8664InstrVisitor<String>, X8664OperandVisit
   
   String visitProgram(X8664ProgramASM x8664programASM) => "X8664ProgramAsm(${visitFunction(x8664programASM.function)})";
   
-  String visitFunction(X8664FunctionASM function) => "Function(${function.name}, ${function.instrs.map((instr) => instr.accept(this)).join(", ")})";
+  String visitFunction(X8664FunctionASM function) => 
+    "Function(${function.name}, ${function.instrs.map((instr) => instr.accept(this)).join(", ")})";
 
   @override
   String visitAllocateStackX8664Instr(AllocateStackX8664Instr alloc) => "AllocateStack(${alloc.amount})";
   
   @override
-  String visitBinaryX8664Instr(BinaryX8664Instr binaryX8664Instr) => "Binary(${binaryX8664Instr.operator.name}, ${binaryX8664Instr.lhs.accept(this)}, ${binaryX8664Instr.rhs.accept(this)})";
+  String visitBinaryX8664Instr(BinaryX8664Instr binaryX8664Instr) => 
+    "Binary(${binaryX8664Instr.operator.name}, ${binaryX8664Instr.lhs.accept(this)}, ${binaryX8664Instr.rhs.accept(this)})";
   
   @override
-  String visitImmediateX8664Operand(ImmediateX8664Operand immediateX8664Operand) => "Immediate(${immediateX8664Operand.value})";
+  String visitImmediateX8664Operand(ImmediateX8664Operand immediateX8664Operand) => 
+    "Immediate(${immediateX8664Operand.value})";
   
   @override
-  String visitMoveX8664Instr(MoveX8664Instr moveX8664Instr) => "Move(${moveX8664Instr.src.accept(this)}, ${moveX8664Instr.dst.accept(this)})";
+  String visitMoveX8664Instr(MoveX8664Instr moveX8664Instr) => 
+    "Move(${moveX8664Instr.src.accept(this)}, ${moveX8664Instr.dst.accept(this)})";
   
   @override
   String visitPseudoX8664Operand(PseudoX8664Operand pseudoX8664Operand) => "Pseudo(${pseudoX8664Operand.id})";
@@ -105,19 +134,43 @@ class X8664AsmPrettifier implements X8664InstrVisitor<String>, X8664OperandVisit
   String visitReturnX8664Instr(ReturnX8664Instr returnX8664Instr) => "Return()";
   
   @override
-  String visitStackX8664Operand(StackX8664Operand stackX8664Operand) => "Stack(${stackX8664Operand.value})";
+  String visitStackX8664Operand(StackX8664Operand stackX8664Operand) => 
+    "Stack(${stackX8664Operand.value})";
   
   @override
-  String visitUnaryX8664Instr(UnaryX8664Instr unaryX8664Instr) => "Unary(${unaryX8664Instr.operator.name}, ${unaryX8664Instr.operand.accept(this)})";
+  String visitUnaryX8664Instr(UnaryX8664Instr unaryX8664Instr) => 
+    "Unary(${unaryX8664Instr.operator.name}, ${unaryX8664Instr.operand.accept(this)})";
   
   @override
-  String visitRegisterX8664Operand(RegisterX8664Operand registerX8664Operand) => "Register(${registerX8664Operand.reg}, ${registerX8664Operand.size})";
+  String visitRegisterX8664Operand(RegisterX8664Operand registerX8664Operand) => 
+    "Register(${registerX8664Operand.reg}, ${registerX8664Operand.size})";
   
   @override
   String visitCdqX8664Instr(CdqX8664Instr cdqX8664Instr) => "Cdq()";
   
   @override
-  String visitIdivX8664Instr(IdivX8664Instr idivX8664Instr) => "Idiv(${idivX8664Instr.operand.accept(this)})";
+  String visitIdivX8664Instr(IdivX8664Instr idivX8664Instr) => 
+    "Idiv(${idivX8664Instr.operand.accept(this)})";
+  
+  @override
+  String visitCmpX8664Instr(CmpX8664Instr cmpX8664Instr) => 
+    "Cmp(${cmpX8664Instr.lhs.accept(this)}, ${cmpX8664Instr.rhs.accept(this)})";
+  
+  @override
+  String visitJmpCCX8664Instr(JmpCCX8664Instr jmpCcx8664Instr) => 
+    "JmpCC(${jmpCcx8664Instr.condCode.name}, ${jmpCcx8664Instr.identifier})";
+  
+  @override
+  String visitJmpX8664Instr(JmpX8664Instr jmpX8664Instr) => 
+    "Jmp(${jmpX8664Instr.identifier})";
+  
+  @override
+  String visitLabelX8664Instr(LabelX8664Instr labelX8664Instr) => 
+    "Label(${labelX8664Instr.identifier})";
+  
+  @override
+  String visitSetCCX8664Instr(SetCCX8664Instr setCcx8664Instr) => 
+    "SetCC(${setCcx8664Instr.condCode.name}, ${setCcx8664Instr.operand.accept(this)})";
 }
 
 class X8664FunctionASM {
@@ -188,7 +241,6 @@ enum X8664Register {
   const X8664Register(this.names);
 }
 
-// dart format off 
 enum X8664BinaryOperator {
   add,
   sub,
@@ -206,4 +258,12 @@ enum X8664UnaryOperator {
   neg,
   not,
 }
-// dart format on
+
+enum X8664CondCode {
+  e,
+  ne,
+  g,
+  ge,
+  l,
+  le,
+}

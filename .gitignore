@@ -4,3 +4,4 @@ main
 bin/cdc.exe
 .envrc
 tools/bin
+tools/**/*.exe

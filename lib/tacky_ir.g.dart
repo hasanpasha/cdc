@@ -10,6 +10,11 @@ abstract class InstrVisitor<R> {
   R visitReturnInstr(ReturnInstr returnInstr);
   R visitUnaryInstr(UnaryInstr unaryInstr);
   R visitBinaryInstr(BinaryInstr binaryInstr);
+  R visitCopyInstr(CopyInstr copyInstr);
+  R visitJumpInstr(JumpInstr jumpInstr);
+  R visitJumpIfZeroInstr(JumpIfZeroInstr jumpIfZeroInstr);
+  R visitJumpIfNotZeroInstr(JumpIfNotZeroInstr jumpIfNotZeroInstr);
+  R visitLabelInstr(LabelInstr labelInstr);
 }
 
 class ReturnInstr extends Instr {
@@ -52,6 +57,67 @@ class BinaryInstr extends Instr {
   @override
   R accept<R>(InstrVisitor<R> visitor) {
     return visitor.visitBinaryInstr(this);
+  }
+}
+
+class CopyInstr extends Instr {
+  CopyInstr(this.src, this.dst);
+
+  final Value src;
+
+  final Value dst;
+
+  @override
+  R accept<R>(InstrVisitor<R> visitor) {
+    return visitor.visitCopyInstr(this);
+  }
+}
+
+class JumpInstr extends Instr {
+  JumpInstr(this.target);
+
+  final String target;
+
+  @override
+  R accept<R>(InstrVisitor<R> visitor) {
+    return visitor.visitJumpInstr(this);
+  }
+}
+
+class JumpIfZeroInstr extends Instr {
+  JumpIfZeroInstr(this.condition, this.target);
+
+  final Value condition;
+
+  final String target;
+
+  @override
+  R accept<R>(InstrVisitor<R> visitor) {
+    return visitor.visitJumpIfZeroInstr(this);
+  }
+}
+
+class JumpIfNotZeroInstr extends Instr {
+  JumpIfNotZeroInstr(this.condition, this.target);
+
+  final Value condition;
+
+  final String target;
+
+  @override
+  R accept<R>(InstrVisitor<R> visitor) {
+    return visitor.visitJumpIfNotZeroInstr(this);
+  }
+}
+
+class LabelInstr extends Instr {
+  LabelInstr(this.value);
+
+  final String value;
+
+  @override
+  R accept<R>(InstrVisitor<R> visitor) {
+    return visitor.visitLabelInstr(this);
   }
 }
 

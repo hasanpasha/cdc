@@ -5,7 +5,19 @@
             "name": "Dart: Run all Tests",
             "type": "dart",
             "request": "launch",
-            "program": "./test/"
+            "program": "./test/",
+            "vmAdditionalArgs": [
+                "--enable-experiment=dot-shorthands",
+            ],
+            "templateFor": "test",
+            "codeLens": {
+                "for": [
+                    "run-test",
+                    "run-test-file",
+                    "debug-test",
+                    "debug-test-file",
+                ],
+            }
         },
         {
             "name": "cdc",
@@ -13,7 +25,7 @@
             "request": "launch",
             "type": "dart",
             "toolArgs": ["--enable-experiment=dot-shorthands"],
-            "args": ["main.c", "--parse"],
+            // "args": ["main.c", "--parse"],
         },
         
     ]

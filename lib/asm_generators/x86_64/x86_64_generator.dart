@@ -1,9 +1,11 @@
 
+import 'dart:async';
+
 import 'package:cdc/cdc.dart';
 
 import 'x86_64_asm.dart';
 
-class X8664Generator implements AsmGenerator, InstrVisitor, ValueVisitor<X8664Operand> {
+class X8664Generator implements AsmGenerator, InstrVisitor<void>, ValueVisitor<X8664Operand> {
   List<X8664Instr> _instrs = [];
   
 // TODO: refactor
@@ -11,9 +13,9 @@ class X8664Generator implements AsmGenerator, InstrVisitor, ValueVisitor<X8664Op
   ProgramASM generate(ProgramIR program) {
     var asmProgram = visitProgram(program);
 
-    // TODO: interface passess 
     asmProgram = PseudoEliminator.transform(asmProgram);
     asmProgram = InstructionsFixer.transform(asmProgram);
+    // TODO: interface passess 
 
     return asmProgram;
 
@@ -65,23 +67,29 @@ class X8664Generator implements AsmGenerator, InstrVisitor, ValueVisitor<X8664Op
           MoveX8664Instr(lhs, dst),
           BinaryX8664Instr(operatpr, rhs, dst),
         ]);
-      // TODO: group BinaryOperator.[divide,remainder] asm generation into one case
-      case .divide:
-        final eax = RegisterX8664Operand(.xa, .word);
-        _instrs.addAll([
-          MoveX8664Instr(lhs, eax),
-          CdqX8664Instr(),
-          IdivX8664Instr(rhs),
-          MoveX8664Instr(eax, dst),
-        ]);
-      case .remainder:
+      case .divide || .remainder:
         final eax = RegisterX8664Operand(.xa, .word);
         final edx = RegisterX8664Operand(.xd, .word);
         _instrs.addAll([
           MoveX8664Instr(lhs, eax),
           CdqX8664Instr(),
           IdivX8664Instr(rhs),
-          MoveX8664Instr(edx, dst),
+          MoveX8664Instr(binaryInstr.operator == .divide ? eax : edx, dst),
+        ]);
+      case .equal || .notEqual || .less || .lessEqual || .greater || .greaterEqual:
+        final X8664CondCode condCode = switch (binaryInstr.operator) {
+          .equal => .e,
+          .notEqual =>  .ne,
+          .less => .l,
+          .lessEqual => .le,
+          .greater => .g,
+          .greaterEqual => .ge,
+          _ => throw Exception("unexpect operator ${binaryInstr.operator}"),
+        };
+        _instrs.addAll([
+          CmpX8664Instr(rhs, lhs),
+          MoveX8664Instr(ImmediateX8664Operand("0"), dst),
+          SetCCX8664Instr(condCode, dst),
         ]);
     }
   }
@@ -98,15 +106,25 @@ class X8664Generator implements AsmGenerator, InstrVisitor, ValueVisitor<X8664Op
   void visitUnaryInstr(UnaryInstr unaryInstr) {
     final src = unaryInstr.src.accept(this);
     final dst = unaryInstr.dst.accept(this);
-    final X8664UnaryOperator operator  = switch (unaryInstr.operator) {
-      UnaryOperator.negate => X8664UnaryOperator.neg,
-      UnaryOperator.complement => X8664UnaryOperator.not,
-    };
+    
+    if (unaryInstr.operator == .not) {
+      _instrs.addAll([
+        CmpX8664Instr(ImmediateX8664Operand("0"), src),
+        MoveX8664Instr(ImmediateX8664Operand("0"), dst),
+        SetCCX8664Instr(.e, dst),
+      ]);
+    } else {
+      final X8664UnaryOperator operator  = switch (unaryInstr.operator) {
+        .negate => .neg,
+        .complement => .not,
+        _ => throw Exception("unexpect operator ${unaryInstr.operator}"),
+      };
 
-    _instrs.addAll([
-      MoveX8664Instr(src, dst),
-      UnaryX8664Instr(operator, dst),
-    ]);
+      _instrs.addAll([
+        MoveX8664Instr(src, dst),
+        UnaryX8664Instr(operator, dst),
+      ]);
+    }
   }
   
   @override
@@ -118,6 +136,33 @@ class X8664Generator implements AsmGenerator, InstrVisitor, ValueVisitor<X8664Op
   X8664Operand visitConstantValue(ConstantValue constantValue) {
     return ImmediateX8664Operand(constantValue.value);
   }
+  
+  @override
+  void visitCopyInstr(CopyInstr copyInstr) => 
+    _instrs.add(MoveX8664Instr(copyInstr.src.accept(this), copyInstr.dst.accept(this)));
+  
+  @override
+  void visitJumpIfNotZeroInstr(JumpIfNotZeroInstr jumpIfNotZeroInstr) => 
+    _instrs.addAll([
+      CmpX8664Instr(ImmediateX8664Operand("0"), jumpIfNotZeroInstr.condition.accept(this)),
+      JmpCCX8664Instr(.ne, jumpIfNotZeroInstr.target)
+    ]);
+  
+  @override
+  void visitJumpIfZeroInstr(JumpIfZeroInstr jumpIfZeroInstr) =>
+    _instrs.addAll([
+      CmpX8664Instr(ImmediateX8664Operand("0"), jumpIfZeroInstr.condition.accept(this)),
+      JmpCCX8664Instr(.e, jumpIfZeroInstr.target)
+    ]);
+  
+  @override
+  void visitJumpInstr(JumpInstr jumpInstr) => 
+    _instrs.add(JmpX8664Instr(jumpInstr.target));
+  
+  
+  @override
+  void visitLabelInstr(LabelInstr labelInstr) => 
+    _instrs.add(LabelX8664Instr(labelInstr.value));
 }
 
 // TODO: move asm passes to separate files
@@ -194,6 +239,37 @@ class InstructionsFixer implements X8664InstrVisitor<List<X8664Instr>> {
       IdivX8664Instr(r10d),
     ];
   }
+  
+  @override
+  List<X8664Instr> visitCmpX8664Instr(CmpX8664Instr cmpX8664Instr) {
+    if (cmpX8664Instr.lhs is StackX8664Operand && cmpX8664Instr.rhs is StackX8664Operand) {
+      final r10d = RegisterX8664Operand(X8664Register.r10, .word);
+      return [
+        MoveX8664Instr(cmpX8664Instr.lhs, r10d),
+        CmpX8664Instr(r10d, cmpX8664Instr.rhs),
+      ];
+    } else if (cmpX8664Instr.rhs is ImmediateX8664Operand) {
+      final r10d = RegisterX8664Operand(X8664Register.r10, .word);
+      return [
+        MoveX8664Instr(cmpX8664Instr.rhs, r10d),
+        CmpX8664Instr(cmpX8664Instr.lhs, r10d),
+      ];
+    } else {
+      return [cmpX8664Instr];
+    }
+  }
+  
+  @override
+  List<X8664Instr> visitJmpCCX8664Instr(JmpCCX8664Instr jmpCcx8664Instr) => [jmpCcx8664Instr];
+  
+  @override
+  List<X8664Instr> visitJmpX8664Instr(JmpX8664Instr jmpX8664Instr) => [jmpX8664Instr];
+  
+  @override
+  List<X8664Instr> visitLabelX8664Instr(LabelX8664Instr labelX8664Instr) => [labelX8664Instr];
+  
+  @override
+  List<X8664Instr> visitSetCCX8664Instr(SetCCX8664Instr setCcx8664Instr) => [setCcx8664Instr];
 }
 
 class PseudoEliminator implements X8664InstrVisitor<X8664Instr>, X8664OperandVisitor<X8664Operand> {
@@ -253,4 +329,21 @@ class PseudoEliminator implements X8664InstrVisitor<X8664Instr>, X8664OperandVis
   @override
   X8664Instr visitIdivX8664Instr(IdivX8664Instr idivX8664Instr) => 
     IdivX8664Instr(idivX8664Instr.operand.accept(this));
+    
+  @override
+  X8664Instr visitCmpX8664Instr(CmpX8664Instr cmpX8664Instr) =>
+    CmpX8664Instr(cmpX8664Instr.lhs.accept(this), cmpX8664Instr.rhs.accept(this));
+
+  @override
+  X8664Instr visitJmpCCX8664Instr(JmpCCX8664Instr jmpCcx8664Instr) => jmpCcx8664Instr;
+
+  @override
+  X8664Instr visitJmpX8664Instr(JmpX8664Instr jmpX8664Instr) => jmpX8664Instr;
+
+  @override
+  X8664Instr visitLabelX8664Instr(LabelX8664Instr labelX8664Instr) => labelX8664Instr;
+
+  @override
+  X8664Instr visitSetCCX8664Instr(SetCCX8664Instr setCcx8664Instr) =>
+    SetCCX8664Instr(setCcx8664Instr.condCode, setCcx8664Instr.operand.accept(this));
 }

@@ -1,4 +1,5 @@
 int main(void)
 {
-    return -(4 << (2 * 2)) + (100 >> (1 + 2)) << 2;
+    // ^ has lower precedence than <
+    return 5 ^ 7 < 5;
 }

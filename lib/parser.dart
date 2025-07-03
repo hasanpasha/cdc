@@ -3,13 +3,17 @@ import 'package:cdc/token.dart';
 
 enum Precedence {
   none,
-  bor,
-  bxor,
-  band,
-  shift,
-  term,
-  factor,
-  unary,
+  lor,    // logical or
+  land,   // logical and
+  bor,    // bitwise or
+  bxor,   // bitwise exclusive or
+  band,   // bitwise and 
+  cmpEquality,       // for == !=
+  cmpLessGreater, // for < <= > >=
+  shift,  // bitwise left and right shift
+  term,   // +-
+  factor, // - + ~ !
+  unary,  // 
   primary;
 
   bool operator <=(Precedence other) {
@@ -111,10 +115,19 @@ class Parser {
     .leftParen: PrecedenceRule(prefixFn: _group, precedence: .primary),
     .lessLess: PrecedenceRule(infixFn: _binary, precedence: .shift),
     .greaterGreater: PrecedenceRule(infixFn: _binary, precedence: .shift),
-    .and: PrecedenceRule(infixFn: _binary,precedence: .band),
+    .and: PrecedenceRule(infixFn: _binary, precedence: .band),
     .xor: PrecedenceRule(infixFn: _binary, precedence: .bxor),
     .or: PrecedenceRule(infixFn: _binary, precedence: .bor),
     .constant: PrecedenceRule(prefixFn: _constant, precedence: .primary),
+    .bang: PrecedenceRule(prefixFn: _unary, precedence: .unary),
+    .less: PrecedenceRule(infixFn: _binary, precedence: .cmpLessGreater),
+    .lessEqual: PrecedenceRule(infixFn: _binary, precedence: .cmpLessGreater),
+    .greater: PrecedenceRule(infixFn: _binary, precedence: .cmpLessGreater),
+    .greaterEqual: PrecedenceRule(infixFn: _binary, precedence: .cmpLessGreater),
+    .equalEqual: PrecedenceRule(infixFn: _binary, precedence: .cmpEquality),
+    .bangEqual: PrecedenceRule(infixFn: _binary, precedence: .cmpEquality),
+    .andAnd : PrecedenceRule(infixFn: _binary, precedence: .land),
+    .orOr : PrecedenceRule(infixFn: _binary, precedence: .lor),
     // dart format on
   };
   
@@ -133,7 +146,7 @@ class Parser {
   }
 
   Expr expression() {
-    return _parsePrecedence(.bor);
+    return _parsePrecedence(.lor);
   }
   
   BinaryExpr _binary(Expr lhs) {
@@ -148,6 +161,14 @@ class Parser {
       .xor,
       .lessLess,
       .greaterGreater,
+      .less,
+      .lessEqual,
+      .greater,
+      .greaterEqual,
+      .equalEqual,
+      .bangEqual,
+      .andAnd,
+      .orOr,
     ]);
     
     final nextRule = _rules[operator.kind]!;
@@ -157,7 +178,7 @@ class Parser {
   }
 
   UnaryExpr _unary() {
-    final operator = _consumeOneOf([.hyphen, .tilde]);
+    final operator = _consumeOneOf([.hyphen, .tilde, .bang]);
     final operand = _parsePrecedence(.unary);
 
     return UnaryExpr(operator, operand);

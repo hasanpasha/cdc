@@ -1,11 +1,12 @@
 
 import 'package:cdc/ast.dart';
 import 'package:cdc/tacky_ir.dart';
-import 'package:cdc/token.dart';
 
 class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value> {
   List<Instr> _instrs = [];
   int _tmpCount = 0;
+  int _labelCount = 0;
+  
 
   TackyIRGenerator();
 
@@ -38,24 +39,56 @@ class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value> {
   
   @override
   Value visitBinaryExpr(BinaryExpr binary) {
-    final BinaryOperator operator = switch(binary.operator.kind) {
-      .plus => .add,
-      .hyphen => .subtract,
-      .asterisk => .multiply,
-      .forwardSlash => .divide,
-      .percent => .remainder,
-      .and => .band,
-      .or => .bor,
-      .xor => .xor,
-      .lessLess => .shl,
-      .greaterGreater => .shr,
-      _ => throw UnimplementedError("Can't convert ${binary.operator.kind} to binary operator."),
-    };
-    final lhs = binary.lhs.accept(this);
-    final rhs = binary.rhs.accept(this);
     final dst = _makeTempVariable();
 
-    _instrs.add(BinaryInstr(operator, lhs, rhs, dst));
+    if (binary.operator.kind == .andAnd) {
+      final falseLabel = _makeLabel("false");
+      final endLabel = _makeLabel("end");
+      _instrs.add(JumpIfZeroInstr(binary.lhs.accept(this), falseLabel));
+      _instrs.add(JumpIfZeroInstr(binary.rhs.accept(this), falseLabel));
+      _instrs.addAll([
+        CopyInstr(ConstantValue("1"), dst),
+        JumpInstr(endLabel),
+        LabelInstr(falseLabel),
+        CopyInstr(ConstantValue("0"), dst),
+        LabelInstr(endLabel),
+      ]);
+    } else if (binary.operator.kind == .orOr) {
+      final trueLabel = _makeLabel("true");
+      final endLabel = _makeLabel("end");
+      _instrs.add(JumpIfNotZeroInstr(binary.lhs.accept(this), trueLabel));
+      _instrs.add(JumpIfNotZeroInstr(binary.rhs.accept(this), trueLabel));
+      _instrs.addAll([
+        CopyInstr(ConstantValue("0"), dst),
+        JumpInstr(endLabel),
+        LabelInstr(trueLabel),
+        CopyInstr(ConstantValue("1"), dst),
+        LabelInstr(endLabel),
+      ]);
+    } else {
+      final lhs = binary.lhs.accept(this);
+      final rhs = binary.rhs.accept(this);
+      final BinaryOperator operator = switch(binary.operator.kind) {
+        .plus => .add,
+        .hyphen => .subtract,
+        .asterisk => .multiply,
+        .forwardSlash => .divide,
+        .percent => .remainder,
+        .and => .band,
+        .or => .bor,
+        .xor => .xor,
+        .lessLess => .shl,
+        .greaterGreater => .shr,
+        .less => .less,
+        .lessEqual => .lessEqual,
+        .greater => .greater,
+        .greaterEqual => .greaterEqual,
+        .equalEqual => .equal,
+        .bangEqual => .notEqual,
+        _ => throw UnimplementedError("Can't convert ${binary.operator.kind} to binary operator."),
+      };
+      _instrs.add(BinaryInstr(operator, lhs, rhs, dst));
+    }
 
     return dst;
   }
@@ -63,8 +96,9 @@ class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value> {
   @override
   Value visitUnaryExpr(UnaryExpr unary) {
     final UnaryOperator operator = switch(unary.operator.kind) {
-      TokenKind.hyphen => .negate,
-      TokenKind.tilde => .complement,
+      .hyphen => .negate,
+      .tilde => .complement,
+      .bang => .not,
       _ => throw UnimplementedError("Can't convert ${unary.operator.kind} to unary operator."),
     };
     final src = unary.operand.accept(this);
@@ -83,5 +117,10 @@ class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value> {
   Value _makeTempVariable() {
     final name = "tmp.${_tmpCount++}";
     return VariableValue(name);
+  }
+  
+  String _makeLabel(String prefix) {
+    final name = "$prefix${_labelCount++}";
+    return name;
   }
 }

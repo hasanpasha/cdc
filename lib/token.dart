@@ -26,6 +26,12 @@ enum TokenKind {
   lessLess,
   greater,
   greaterGreater,
+  equal,
+  equalEqual,
+  bang,
+  bangEqual,
+  lessEqual,
+  greaterEqual,
   eoi,
 }
 

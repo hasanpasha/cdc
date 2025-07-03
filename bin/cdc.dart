@@ -130,6 +130,7 @@ Future main(List<String> arguments) async {
     _logger.verbose(programIr.toString());
   }
   if (o.onlyGenTacky) {
+    _logger.out(programIr.toString());
     exit(0);
   }
 
@@ -139,6 +140,7 @@ Future main(List<String> arguments) async {
     _logger.verbose(programAsm.toString());
   }
   if (o.onlyGenASM) {
+    _logger.out(programAsm.toString());
     exit(0);
   }
 

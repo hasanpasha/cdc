@@ -13,8 +13,6 @@ class ProgramAST {
   String prettyTree() => ASTPrettier(showLines: true).visitProgram(this);
 }
 
-
-
 class FunctionAST {
   final Token name;
   final Stmt body;
@@ -31,7 +29,9 @@ class ASTPrinter implements StmtVisitor<String>, ExprVisitor<String> {
   String visitReturnStmt(ReturnStmt ret) => "Return(${ret.expr.accept(this)})";
   
   @override
-  String visitBinaryExpr(BinaryExpr binary) => "Binary(${binary.operator.kind.name}, ${binary.lhs.accept(this)}, ${binary.rhs.accept(this)})"; 
+  String visitBinaryExpr(BinaryExpr binary) =>
+      "Binary(${binary.operator.kind.name}"
+      ", ${binary.lhs.accept(this)}, ${binary.rhs.accept(this)})"; 
 
   @override
   String visitUnaryExpr(UnaryExpr unary) => "Unary(${unary.operator.kind.name}, ${unary.operand.accept(this)})";
@@ -59,18 +59,30 @@ class ASTPrettier implements StmtVisitor<String>, ExprVisitor<String> {
   void _push() => level++;
   void _pop() => level--;
 
-  String visitProgram(ProgramAST program) => _withIndent(() => "ProgramAST($_indent${visitFunction(program.function)}$_indentLast)"); 
+  String visitProgram(ProgramAST program) => _withIndent(
+    () => "ProgramAST($_indent${visitFunction(program.function)}$_indentLast)",
+  ); 
 
-  String visitFunction(FunctionAST function) => _withIndent(() => "Function($_indent${function.name.lexeme},$_indent${function.body.accept(this)}$_indentLast)");
+  String visitFunction(FunctionAST function) => _withIndent(
+    () =>
+        "Function($_indent${function.name.lexeme},$_indent${function.body.accept(this)}$_indentLast)",
+  );
 
   @override
   String visitReturnStmt(ReturnStmt ret) => _withIndent(() => "Return($_indent${ret.expr.accept(this)}$_indentLast)");
   
   @override
-  String visitBinaryExpr(BinaryExpr binary) => _withIndent(() => "Binary($_indent${binary.operator.kind.name},$_indent${binary.lhs.accept(this)},$_indent${binary.rhs.accept(this)}$_indentLast)"); 
+  String visitBinaryExpr(BinaryExpr binary) => _withIndent(
+    () =>
+        "Binary($_indent${binary.operator.kind.name},$_indent${binary.lhs.accept(this)},"
+        "$_indent${binary.rhs.accept(this)}$_indentLast)",
+  ); 
 
   @override
-  String visitUnaryExpr(UnaryExpr unary) => _withIndent(() => "Unary($_indent${unary.operator.kind.name},$_indent${unary.operand.accept(this)})$_indentLast");
+  String visitUnaryExpr(UnaryExpr unary) => _withIndent(
+    () =>
+        "Unary($_indent${unary.operator.kind.name},$_indent${unary.operand.accept(this)})$_indentLast",
+  );
   
   @override
   String visitConstantExpr(ConstantExpr constant) => _withIndent(() => "Constant(${constant.value})");
@@ -78,10 +90,12 @@ class ASTPrettier implements StmtVisitor<String>, ExprVisitor<String> {
 
 class ExprPolishNotation implements ExprVisitor<String> {
   @override
-  String visitBinaryExpr(BinaryExpr binaryExpr) => "(${binaryExpr.operator.lexeme} ${binaryExpr.lhs.accept(this)} ${binaryExpr.rhs.accept(this)})";
+  String visitBinaryExpr(BinaryExpr binaryExpr) =>
+      "(${binaryExpr.operator.lexeme} ${binaryExpr.lhs.accept(this)} ${binaryExpr.rhs.accept(this)})";
 
   @override
-  String visitUnaryExpr(UnaryExpr unaryExpr) => "(${unaryExpr.operator.lexeme} ${unaryExpr.operand.accept(this)})";
+  String visitUnaryExpr(UnaryExpr unaryExpr) =>
+      "(${unaryExpr.operator.lexeme} ${unaryExpr.operand.accept(this)})";
 
   @override
   String visitConstantExpr(ConstantExpr constantExpr) => constantExpr.value;
