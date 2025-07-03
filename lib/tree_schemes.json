@@ -30,9 +30,38 @@
     ],
     "scheme": {
       "Instr": {
-        "Return": {"value": "Value"},
-        "Unary": {"operator": "UnaryOperator", "src": "Value", "dst": "Value"},
-        "Binary": {"operator": "BinaryOperator", "lhs": "Value", "rhs": "Value", "dst": "Value"}
+        "Return": {
+          "value": "Value"
+        },
+        "Unary": {
+          "operator": "UnaryOperator",
+          "src": "Value",
+          "dst": "Value"
+        },
+        "Binary": {
+          "operator": "BinaryOperator",
+          "lhs": "Value",
+          "rhs": "Value",
+          "dst": "Value"
+        },
+        "Copy": {
+          "src": "Value",
+          "dst": "Value"
+        },
+        "Jump": {
+          "target": "String"
+        },
+        "JumpIfZero": {
+          "condition": "Value",
+          "target": "String"
+        },
+        "JumpIfNotZero": {
+          "condition": "Value",
+          "target": "String"
+        },
+        "Label": {
+          "value": "String"
+        }
       },
       "Value": {
         "Constant": {"value": "String"},

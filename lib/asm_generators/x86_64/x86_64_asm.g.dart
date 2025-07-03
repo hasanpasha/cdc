@@ -10,8 +10,13 @@ abstract class X8664InstrVisitor<R> {
   R visitMoveX8664Instr(MoveX8664Instr moveX8664Instr);
   R visitUnaryX8664Instr(UnaryX8664Instr unaryX8664Instr);
   R visitBinaryX8664Instr(BinaryX8664Instr binaryX8664Instr);
+  R visitCmpX8664Instr(CmpX8664Instr cmpX8664Instr);
   R visitIdivX8664Instr(IdivX8664Instr idivX8664Instr);
   R visitCdqX8664Instr(CdqX8664Instr cdqX8664Instr);
+  R visitJmpX8664Instr(JmpX8664Instr jmpX8664Instr);
+  R visitJmpCCX8664Instr(JmpCCX8664Instr jmpCcx8664Instr);
+  R visitSetCCX8664Instr(SetCCX8664Instr setCcx8664Instr);
+  R visitLabelX8664Instr(LabelX8664Instr labelX8664Instr);
   R visitAllocateStackX8664Instr(
     AllocateStackX8664Instr allocateStackX8664Instr,
   );
@@ -59,6 +64,19 @@ class BinaryX8664Instr extends X8664Instr {
   }
 }
 
+class CmpX8664Instr extends X8664Instr {
+  CmpX8664Instr(this.lhs, this.rhs);
+
+  final X8664Operand lhs;
+
+  final X8664Operand rhs;
+
+  @override
+  R accept<R>(X8664InstrVisitor<R> visitor) {
+    return visitor.visitCmpX8664Instr(this);
+  }
+}
+
 class IdivX8664Instr extends X8664Instr {
   IdivX8664Instr(this.operand);
 
@@ -76,6 +94,54 @@ class CdqX8664Instr extends X8664Instr {
   @override
   R accept<R>(X8664InstrVisitor<R> visitor) {
     return visitor.visitCdqX8664Instr(this);
+  }
+}
+
+class JmpX8664Instr extends X8664Instr {
+  JmpX8664Instr(this.identifier);
+
+  final String identifier;
+
+  @override
+  R accept<R>(X8664InstrVisitor<R> visitor) {
+    return visitor.visitJmpX8664Instr(this);
+  }
+}
+
+class JmpCCX8664Instr extends X8664Instr {
+  JmpCCX8664Instr(this.condCode, this.identifier);
+
+  final X8664CondCode condCode;
+
+  final String identifier;
+
+  @override
+  R accept<R>(X8664InstrVisitor<R> visitor) {
+    return visitor.visitJmpCCX8664Instr(this);
+  }
+}
+
+class SetCCX8664Instr extends X8664Instr {
+  SetCCX8664Instr(this.condCode, this.operand);
+
+  final X8664CondCode condCode;
+
+  final X8664Operand operand;
+
+  @override
+  R accept<R>(X8664InstrVisitor<R> visitor) {
+    return visitor.visitSetCCX8664Instr(this);
+  }
+}
+
+class LabelX8664Instr extends X8664Instr {
+  LabelX8664Instr(this.identifier);
+
+  final String identifier;
+
+  @override
+  R accept<R>(X8664InstrVisitor<R> visitor) {
+    return visitor.visitLabelX8664Instr(this);
   }
 }
 

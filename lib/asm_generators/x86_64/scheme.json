@@ -9,19 +9,58 @@
     ],
     "scheme": {
       "X8664Instr": {
-        "Move": {"src": "X8664Operand", "dst": "X8664Operand"},
-        "Unary": {"operator": "X8664UnaryOperator", "operand": "X8664Operand"},
-        "Binary": {"operator": "X8664BinaryOperator", "lhs": "X8664Operand", "rhs": "X8664Operand"},
+        "Move": {
+          "src": "X8664Operand",
+          "dst": "X8664Operand"
+        },
+        "Unary": {
+          "operator": "X8664UnaryOperator",
+          "operand": "X8664Operand"
+        },
+        "Binary": {
+          "operator": "X8664BinaryOperator",
+          "lhs": "X8664Operand",
+          "rhs": "X8664Operand"
+        },
+        "Cmp": {
+          "lhs": "X8664Operand",
+          "rhs": "X8664Operand"
+        },
         "Idiv": {"operand": "X8664Operand"},
         "Cdq": {},
-        "AllocateStack": {"amount": "int"},
+        "Jmp": {
+          "identifier": "String"
+        },
+        "JmpCC": {
+          "condCode": "X8664CondCode",
+          "identifier": "String"
+        },
+        "SetCC": {
+          "condCode": "X8664CondCode",
+          "operand": "X8664Operand"
+        },
+        "Label": {
+          "identifier": "String"
+        },
+        "AllocateStack": {
+          "amount": "int"
+        },
         "Return": {}
       },
       "X8664Operand": {
-        "Immediate": {"value": "String"},
-        "Register": {"reg": "X8664Register", "size": "X8664RegisterSize"},
-        "Pseudo": {"id": "String"},
-        "Stack": { "value": "int" }
+        "Immediate": {
+          "value": "String"
+        },
+        "Register": {
+          "reg": "X8664Register",
+          "size": "X8664RegisterSize"
+        },
+        "Pseudo": {
+          "id": "String"
+        },
+        "Stack": {
+          "value": "int"
+        }
       }
     }
 }
