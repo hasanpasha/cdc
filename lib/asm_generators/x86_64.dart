@@ -1,0 +1,1 @@
+export 'x86_64/x86_64_generator.dart' show X8664Generator;
