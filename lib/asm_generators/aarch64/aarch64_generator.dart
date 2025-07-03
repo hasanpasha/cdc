@@ -45,6 +45,7 @@ class AArch64Generator implements AsmGenerator, InstrVisitor<List<AArch64Instr>>
           .bor => .orr,
           .xor => .eor,
           .shl => .lsl,
+          // FIXME: use `lsr` if operand is unsigned
           .shr => .asr,
           _ => throw UnimplementedError("can't match TackyIR binary operator `${binaryInstr.operator}` to aarch64 operator."),
         };
@@ -166,7 +167,24 @@ class MoveMemoryEliminator implements AArch64InstrVisitor<List<AArch64Instr>> {
     [storeMemoryAArch64Instr];
   
   @override
-  List<AArch64Instr> visitUnaryAArch64Instr(UnaryAArch64Instr unaryAArch64Instr) => [unaryAArch64Instr];
+  List<AArch64Instr> visitUnaryAArch64Instr(UnaryAArch64Instr unaryAArch64Instr) {
+    if (unaryAArch64Instr.dst is StackAArch64Operand || unaryAArch64Instr.operand is StackAArch64Operand) {
+      final w11 = RegisterAArch64Operand(.of(11), .word);
+      final w12 = RegisterAArch64Operand(.of(12), .word);
+      return [
+        if (unaryAArch64Instr.operand is StackAArch64Operand) 
+          LoadMemoryAArch64Instr(unaryAArch64Instr.operand as StackAArch64Operand, w11),
+        UnaryAArch64Instr(
+          unaryAArch64Instr.operator,
+          unaryAArch64Instr.operand is StackAArch64Operand ? w11 : unaryAArch64Instr.operand,
+          unaryAArch64Instr.dst is StackAArch64Operand ? w12 : unaryAArch64Instr.dst
+        ),
+        if (unaryAArch64Instr.dst is StackAArch64Operand) StoreMemoryAArch64Instr(w12, unaryAArch64Instr.dst as StackAArch64Operand),
+      ];
+    } else {
+      return [unaryAArch64Instr];
+    }
+  }
   
   @override
   List<AArch64Instr> visitDeallocateStackAArch64Instr(DeallocateStackAArch64Instr deallocateStackAArch64Instr) => 
