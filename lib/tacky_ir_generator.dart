@@ -111,7 +111,7 @@ class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value>, DeclVisitor<V
   
   @override
   Value visitConstantExpr(ConstantExpr constant) {
-    return ConstantValue(constant.value);
+    return ConstantValue(constant.value.lexeme);
   }
   
   Value _makeTempVariable() {

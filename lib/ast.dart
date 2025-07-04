@@ -169,12 +169,13 @@ class ExprPolishNotation implements ExprVisitor<String> {
       "(${unaryExpr.operator.lexeme} ${unaryExpr.operand.accept(this)})";
 
   @override
-  String visitConstantExpr(ConstantExpr constantExpr) => constantExpr.value;
+  String visitConstantExpr(ConstantExpr constantExpr) =>
+      constantExpr.value.lexeme;
   
   @override
   String visitAssignmentExpr(AssignmentExpr assignmentExpr) =>
       "= ${assignmentExpr.lhs.accept(this)}, ${assignmentExpr.rhs.accept(this)}";
 
   @override
-  String visitVarExpr(VarExpr varExpr) => varExpr.identifier;
+  String visitVarExpr(VarExpr varExpr) => varExpr.identifier.lexeme;
 }

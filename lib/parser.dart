@@ -270,12 +270,12 @@ class Parser {
   
   ConstantExpr _constant() {
     final constant = _consume(.constant, "Expect a constant.");
-    return ConstantExpr(constant.lexeme);
+    return ConstantExpr(constant);
   }
 
   VarExpr _var() {
     final identifier = _consume(.identifier, "Expect an identifier.");
-    return VarExpr(identifier.lexeme);
+    return VarExpr(identifier);
   }
 
   Expr _assignment(Expr left) {
@@ -367,8 +367,8 @@ class ConstantFolder implements StmtVisitor<Stmt>, ExprVisitor<Expr>, DeclVisito
     final rhs = binaryExpr.rhs.accept(this);
 
     if (lhs is ConstantExpr && rhs is ConstantExpr) {
-      final left = int.parse(lhs.value);
-      final right = int.parse(rhs.value);
+      final left = int.parse(lhs.value.lexeme);
+      final right = int.parse(rhs.value.lexeme);
       final result = switch (binaryExpr.operator.kind) {
         .plus => left+right,
         .hyphen => left-right,
@@ -377,7 +377,7 @@ class ConstantFolder implements StmtVisitor<Stmt>, ExprVisitor<Expr>, DeclVisito
         .percent => left%right,
         _ => throw Exception("unexpected operator: ${binaryExpr.operator.kind.name}"),
       };
-      return ConstantExpr("${result.toInt()}");
+      return ConstantExpr(Token(.constant, result.toInt().toString(), lhs.value.location));
     }
 
     return BinaryExpr(binaryExpr.operator, lhs, rhs);
@@ -394,13 +394,13 @@ class ConstantFolder implements StmtVisitor<Stmt>, ExprVisitor<Expr>, DeclVisito
     final operand = unaryExpr.operand.accept(this);
 
     if (operand is ConstantExpr) {
-      final right = int.parse(operand.value);
+      final right = int.parse(operand.value.lexeme);
       final result = switch (unaryExpr.operator.kind) {
         .hyphen => -right,
         .tilde => ~right,
         _ => throw Exception("unexpected operator: ${unaryExpr.operator.kind.name}"),
       };
-      return ConstantExpr("$result");
+      return ConstantExpr(Token(.constant, result.toString(), operand.value.location));
     }
 
     return UnaryExpr(unaryExpr.operator, operand);

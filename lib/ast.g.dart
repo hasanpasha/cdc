@@ -118,7 +118,7 @@ abstract class ExprVisitor<R> {
 class ConstantExpr extends Expr {
   ConstantExpr(this.value);
 
-  final String value;
+  final Token value;
 
   @override
   R accept<R>(ExprVisitor<R> visitor) {
@@ -129,7 +129,7 @@ class ConstantExpr extends Expr {
 class VarExpr extends Expr {
   VarExpr(this.identifier);
 
-  final String identifier;
+  final Token identifier;
 
   @override
   R accept<R>(ExprVisitor<R> visitor) {

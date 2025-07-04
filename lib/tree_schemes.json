@@ -34,9 +34,11 @@
         }
       },
       "Expr": {
-        "Constant": {"value": "String"},
+        "Constant": {
+          "value": "Token"
+        },
         "Var": {
-          "identifier": "String"
+          "identifier": "Token"
         },
         "Unary": {"operator": "Token", "operand": "Expr"},
         "Binary": {
