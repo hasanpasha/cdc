@@ -15,15 +15,21 @@ class ProgramAST {
 
 class FunctionAST {
   final Token name;
-  final Stmt body;
+  final List<BlockItem> body;
 
   FunctionAST({required this.name, required this.body});
 }
 
-class ASTPrinter implements StmtVisitor<String>, ExprVisitor<String> {
+class ASTPrinter
+    implements
+        StmtVisitor<String>,
+        ExprVisitor<String>,
+        DeclVisitor<String>,
+        BlockItemVisitor<String> {
   String visitProgram(ProgramAST program) => "ProgramAST(${visitFunction(program.function)})"; 
 
-  String visitFunction(FunctionAST function) => "Function(${function.name.lexeme}, ${function.body.accept(this)})";
+  String visitFunction(FunctionAST function) =>
+      "Function(${function.name.lexeme}, [${function.body.map((item) => item.accept(this)).join(", ")}])";
 
   @override
   String visitReturnStmt(ReturnStmt ret) => "Return(${ret.expr.accept(this)})";
@@ -38,9 +44,40 @@ class ASTPrinter implements StmtVisitor<String>, ExprVisitor<String> {
   
   @override
   String visitConstantExpr(ConstantExpr constant) => "Constant(${constant.value})";
+  
+  @override
+  String visitAssignmentExpr(AssignmentExpr assignmentExpr) =>
+      "Assignment(${assignmentExpr.lhs.accept(this)}, ${assignmentExpr.rhs.accept(this)})";
+
+  @override
+  String visitVarExpr(VarExpr varExpr) => "Var(${varExpr.identifier})";
+
+  @override
+  String visitExpressionStmt(ExpressionStmt expressionStmt) =>
+      "Expression(${expressionStmt.expr.accept(this)})";
+
+  @override
+  String visitNullStmt(NullStmt nullStmt) => "Null";
+
+  @override
+  String visitVariableDecl(VariableDecl variableDecl) =>
+      "Variable(${variableDecl.name.lexeme}, ${variableDecl.init?.accept(this)})";
+
+  @override
+  String visitDeclBlockItem(DeclBlockItem declBlockItem) =>
+      "Decl(${declBlockItem.accept(this)})";
+
+  @override
+  String visitStmtBlockItem(StmtBlockItem stmtBlockItem) =>
+      "Stmt(${stmtBlockItem.stmt.accept(this)})";
 }
 
-class ASTPrettier implements StmtVisitor<String>, ExprVisitor<String> {
+class ASTPrettier
+    implements
+        StmtVisitor<String>,
+        ExprVisitor<String>,
+        DeclVisitor<String>,
+        BlockItemVisitor<String> {
   int level = 0;
   final bool showLines;
 
@@ -65,7 +102,7 @@ class ASTPrettier implements StmtVisitor<String>, ExprVisitor<String> {
 
   String visitFunction(FunctionAST function) => _withIndent(
     () =>
-        "Function($_indent${function.name.lexeme},$_indent${function.body.accept(this)}$_indentLast)",
+        "Function($_indent${function.name.lexeme},$_indent[$_indent${function.body.map((item) => item.accept(this)).join(",$_indent")}$_indentLast]$_indentLast)",
   );
 
   @override
@@ -81,11 +118,45 @@ class ASTPrettier implements StmtVisitor<String>, ExprVisitor<String> {
   @override
   String visitUnaryExpr(UnaryExpr unary) => _withIndent(
     () =>
-        "Unary($_indent${unary.operator.kind.name},$_indent${unary.operand.accept(this)})$_indentLast",
+        "Unary($_indent${unary.operator.kind.name},$_indent${unary.operand.accept(this)}$_indentLast)",
   );
   
   @override
   String visitConstantExpr(ConstantExpr constant) => _withIndent(() => "Constant(${constant.value})");
+  
+  @override
+  String visitAssignmentExpr(AssignmentExpr assignmentExpr) => _withIndent(
+    () =>
+        "Assignment($_indent${assignmentExpr.lhs.accept(this)},$_indent${assignmentExpr.rhs.accept(this)}$_indentLast)",
+  );
+
+  @override
+  String visitVarExpr(VarExpr varExpr) =>
+      _withIndent(() => "Var(${varExpr.identifier})");
+
+  @override
+  String visitExpressionStmt(ExpressionStmt expressionStmt) => _withIndent(
+    () => "Expression($_indent${expressionStmt.expr.accept(this)}$_indentLast)",
+  );
+
+  @override
+  String visitNullStmt(NullStmt nullStmt) => "Null";
+
+  @override
+  String visitVariableDecl(VariableDecl variableDecl) => _withIndent(
+    () =>
+        "Variable($_indent${variableDecl.name.lexeme},$_indent${variableDecl.init?.accept(this)}$_indentLast)",
+  );
+
+  @override
+  String visitDeclBlockItem(DeclBlockItem declBlockItem) => _withIndent(
+    () => "Decl($_indent${declBlockItem.decl.accept(this)}$_indentLast)",
+  );
+
+  @override
+  String visitStmtBlockItem(StmtBlockItem stmtBlockItem) => _withIndent(
+    () => "Stmt($_indent${stmtBlockItem.stmt.accept(this)}$_indentLast)",
+  );
 }
 
 class ExprPolishNotation implements ExprVisitor<String> {
@@ -99,4 +170,11 @@ class ExprPolishNotation implements ExprVisitor<String> {
 
   @override
   String visitConstantExpr(ConstantExpr constantExpr) => constantExpr.value;
+  
+  @override
+  String visitAssignmentExpr(AssignmentExpr assignmentExpr) =>
+      "= ${assignmentExpr.lhs.accept(this)}, ${assignmentExpr.rhs.accept(this)}";
+
+  @override
+  String visitVarExpr(VarExpr varExpr) => varExpr.identifier;
 }

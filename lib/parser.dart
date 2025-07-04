@@ -3,18 +3,19 @@ import 'package:cdc/token.dart';
 
 enum Precedence {
   none,
+  assignment, // = += -= *= /= %= <<= >>= &= |= ^=
   lor,    // logical or
   land,   // logical and
   bor,    // bitwise or
   bxor,   // bitwise exclusive or
   band,   // bitwise and 
-  cmpEquality,       // for == !=
-  cmpLessGreater, // for < <= > >=
+  cmpEquality,       // == !=
+  cmpLessGreater, // < <= > >=
   shift,  // bitwise left and right shift
   term,   // +-
-  factor, // - + ~ !
-  unary,  // 
-  primary;
+  factor, // */%
+  unary,  // - + ~ !
+  primary; // '1'  'i' 'name' 'main'
 
   bool operator <=(Precedence other) {
     return index <= other.index;
@@ -23,36 +24,40 @@ enum Precedence {
   Precedence operator +(int offset) {
     return values.firstWhere((precedence) => precedence.index == index+offset);
   }
-
-  Precedence operator -(int offset) {
-    return values.firstWhere((precedence) => precedence.index == index-offset);
-  }
-}
-
-enum Associativity {
-  left,
-  right,
 }
 
 class PrecedenceRule {
   final Expr Function()? _prefixFn;
   final Expr Function(Expr lhs)? _infixFn;
   final Precedence precedence;
-  final Associativity associativity;
 
   static PrecedenceRule get none => PrecedenceRule(prefixFn: null, infixFn: null, precedence: .none);
 
-  PrecedenceRule({Expr Function()? prefixFn, Expr Function(Expr)? infixFn, Precedence? precedence, Associativity? associativity}) : 
+  PrecedenceRule({Expr Function()? prefixFn, Expr Function(Expr)? infixFn, Precedence? precedence}) : 
     _infixFn = infixFn, 
     _prefixFn = prefixFn, 
-    precedence = precedence ?? .none,
-    associativity = associativity ?? Associativity.left;
-    
+    precedence = precedence ?? .none;
 
   Expr prefix() => _prefixFn!();
   Expr infix(Expr lhs) => _infixFn!(lhs);
 }
 
+
+class SyntaxError implements Exception {
+  final Token token;
+  final String message;
+
+  const SyntaxError(this.token, this.message);
+
+  @override
+  String toString() => "${token.location}: ${token.lexeme}, $message.";
+}
+
+class LexerError extends SyntaxError {
+  final List<ErrorToken> errors;
+
+  LexerError(this.errors): super(errors.first, "lexer error");
+}
 
 class Parser {
   final List<Token> tokens;
@@ -85,15 +90,71 @@ class Parser {
     _consume(.leftParen, "Expect a '(' at start of parameters list.");
     _consume(.void$, "Expect `void` as argument.");
     _consume(.rightParen, "Expect ')' closing parameters list.");
+    
     _consume(.leftBraces, "Expect '{' opening a function body.");
-    final Stmt body = statement();
+    
+    bool hadError = false;
+    final List<BlockItem> body = [];
+    while (!_isAtEnd && _peek().kind != .rightBraces) {
+      try {
+        body.add(blockItem());
+      } on LexerError catch (e) {
+        hadError = true;
+        for (var error in e.errors) {
+          print("${error.location}: lexer error, ${error.message}");
+        }
+        _synchronize();
+      } on SyntaxError catch (e) {
+        hadError = true;
+        print(e);
+        _synchronize();
+      }
+    }
+    if (hadError) {
+      throw SyntaxError(name, "error while parsing function body.");
+    }
+
     _consume(.rightBraces, "Expect '}' closing a function body.");
 
     return FunctionAST(name: name, body: body);
   }
+
+  BlockItem blockItem() {
+    if (_peek().kind == .int) return DeclBlockItem(declaration());
+    return StmtBlockItem(statement());
+  }
   
+  Decl declaration() {
+    return _variableDecl();
+  }
+
+  Decl _variableDecl() {
+    _consume(.int, "Expect a variable type.");
+    Token name = _consume(.identifier, "Expect a variable identifier.");
+    Expr? init;
+    if (_peek().kind == .equal) {
+      _consume(.equal, "Expect '=' before initializer.");
+      init = expression();
+    }
+    _consume(.semicolon, "Expect a ';' at the end of a variable declaration.");
+    return VariableDecl(name, init);
+  }
+
   Stmt statement() {
-    return _returnStmt();
+    if (_peek().kind == .semicolon) return _nullStmt();
+    if (_peek().kind == .return$) return _returnStmt();
+    return _expressionStmt();
+  }
+
+  Stmt _nullStmt() {
+    _consume(.semicolon, "Expect ';' in a null statement.");
+    return NullStmt();
+  }
+
+  Stmt _expressionStmt() {
+    final expr = expression();
+    _consume(.semicolon, "Expect ';' at the end of an expression statement.");
+    return ExpressionStmt(expr);
   }
   
   ReturnStmt _returnStmt() {
@@ -103,7 +164,6 @@ class Parser {
     return ReturnStmt(keyword, expr);
   }
 
-  
   Map<TokenKind, PrecedenceRule> get _rules => {
     // dart format off
     .plus: PrecedenceRule(infixFn: _binary, precedence: .term),
@@ -119,6 +179,7 @@ class Parser {
     .xor: PrecedenceRule(infixFn: _binary, precedence: .bxor),
     .or: PrecedenceRule(infixFn: _binary, precedence: .bor),
     .constant: PrecedenceRule(prefixFn: _constant, precedence: .primary),
+    .identifier: PrecedenceRule(prefixFn: _var, precedence: .primary),
     .bang: PrecedenceRule(prefixFn: _unary, precedence: .unary),
     .less: PrecedenceRule(infixFn: _binary, precedence: .cmpLessGreater),
     .lessEqual: PrecedenceRule(infixFn: _binary, precedence: .cmpLessGreater),
@@ -128,6 +189,7 @@ class Parser {
     .bangEqual: PrecedenceRule(infixFn: _binary, precedence: .cmpEquality),
     .andAnd : PrecedenceRule(infixFn: _binary, precedence: .land),
     .orOr : PrecedenceRule(infixFn: _binary, precedence: .lor),
+    .equal: PrecedenceRule(infixFn: _assignment, precedence: .assignment),
     // dart format on
   };
   
@@ -135,18 +197,33 @@ class Parser {
 
   Expr _parsePrecedence(Precedence precedence) {
     final PrecedenceRule rule = _peekPrecedenceRule();
-    var lhs = rule.prefix();
+    
+    Expr lhs;
+    try {
+      lhs = rule.prefix();
+    } on SyntaxError {
+      rethrow;
+    } catch (e) {
+      throw SyntaxError(_peek(), "operator doesn't have a prefix parsing method.");
+    }
 
     while (!_isAtEnd && precedence <= _peekPrecedenceRule().precedence) {
       final nextRule = _peekPrecedenceRule();
-      lhs = nextRule.infix(lhs);
+      
+      try {
+        lhs = nextRule.infix(lhs);
+      } on SyntaxError {
+        rethrow;
+      } catch (e) {
+        throw SyntaxError(_peek(), "operator doesn't have an infix parsing method.");
+      }
     }
 
     return lhs;
   }
 
   Expr expression() {
-    return _parsePrecedence(.lor);
+    return _parsePrecedence(.assignment);
   }
   
   BinaryExpr _binary(Expr lhs) {
@@ -172,7 +249,7 @@ class Parser {
     ]);
     
     final nextRule = _rules[operator.kind]!;
-    final rhs = _parsePrecedence((nextRule.associativity == .left) ? nextRule.precedence + 1 : nextRule.precedence);
+    final rhs = _parsePrecedence(nextRule.precedence + 1);
   
     return BinaryExpr(operator, lhs, rhs);
   }
@@ -195,13 +272,29 @@ class Parser {
     final constant = _consume(.constant, "Expect a constant.");
     return ConstantExpr(constant.lexeme);
   }
+
+  VarExpr _var() {
+    final identifier = _consume(.identifier, "Expect an identifier.");
+    return VarExpr(identifier.lexeme);
+  }
+
+  Expr _assignment(Expr left) {
+    final operator = _consumeOneOf([
+      .equal,
+    ]);
+    
+    final nextRule = _rules[operator.kind]!;
+    final right = _parsePrecedence(nextRule.precedence);
+  
+    return AssignmentExpr(left, right);
+  }
   
   Token _consume(TokenKind kind, String msg) {
     final Token next = _peek();
     if (next.kind != kind) {
-      throw Exception("${next.location}: unexpected token kind `${next.kind}`, $msg");
+      throw SyntaxError(next, msg);
     }
-
+    
     return _advance();
   }
   
@@ -209,20 +302,64 @@ class Parser {
     final next = _peek();
     return list.contains(next.kind) 
       ? _advance()
-      : throw Exception("${next.location}: unexpected token kind `${next.kind}`, expected one of `$list`");
+      : throw SyntaxError(next, "should be one of [${list.join(", ")}]");
   }
   
   bool get _isAtEnd => _currentIdx == tokens.length;
-  Token _peek() => tokens[_currentIdx];
-  Token _advance() => tokens[_currentIdx++];
+  
+  Token _peek() {
+    Token next = tokens[_currentIdx];
+
+    final List<ErrorToken> errors = [];
+    while (!_isAtEnd && next.kind == .error) {
+      errors.add(next as ErrorToken);
+      _currentIdx++;
+      next = tokens[_currentIdx];
+    }
+
+    if (errors.isNotEmpty) {
+      throw LexerError(errors);
+    }
+
+    return next;
+  }
+  
+  Token _advance() {
+    Token next = _peek();
+    _currentIdx++;
+    return next;
+  }
+  
+  void _synchronize() {
+    while (!_isAtEnd) {
+      if (_peek().kind == .semicolon) {
+        _advance();
+        return;
+      }
+
+      switch (_peek().kind) {
+        case .int || .return$:
+          return;
+        default:
+          // print(_peek());
+          break;
+      }
+
+      _advance();
+    }
+  }
+  
 }
 
-class ConstantFolder implements StmtVisitor<Stmt>, ExprVisitor<Expr> {
+class ConstantFolder implements StmtVisitor<Stmt>, ExprVisitor<Expr>, DeclVisitor<Decl>, BlockItemVisitor<BlockItem> {
   static ProgramAST transform(ProgramAST program) => ConstantFolder().visitProgram(program);
   
   ProgramAST visitProgram(ProgramAST program) => ProgramAST(function: visitFunction(program.function));
   
-  visitFunction(FunctionAST function) => FunctionAST(name: function.name, body: function.body.accept(this));
+  visitFunction(FunctionAST function) => FunctionAST(
+    name: function.name, 
+    body: function.body.map((item) => item.accept(this)).toList()
+  );
   
   @override
   Expr visitBinaryExpr(BinaryExpr binaryExpr) {
@@ -268,4 +405,27 @@ class ConstantFolder implements StmtVisitor<Stmt>, ExprVisitor<Expr> {
 
     return UnaryExpr(unaryExpr.operator, operand);
   }
+  
+  @override
+  Expr visitAssignmentExpr(AssignmentExpr assignmentExpr) => 
+    AssignmentExpr(assignmentExpr.lhs.accept(this), assignmentExpr.rhs.accept(this));
+  
+  @override
+  Expr visitVarExpr(VarExpr varExpr) => varExpr;
+  
+  @override
+  Stmt visitExpressionStmt(ExpressionStmt expressionStmt) => 
+    ExpressionStmt(expressionStmt.expr.accept(this));
+  
+  @override
+  Stmt visitNullStmt(NullStmt nullStmt) => nullStmt;
+  
+  @override
+  BlockItem visitDeclBlockItem(DeclBlockItem declBlockItem) => DeclBlockItem(declBlockItem.decl.accept(this));
+  
+  @override
+  BlockItem visitStmtBlockItem(StmtBlockItem stmtBlockItem) => StmtBlockItem(stmtBlockItem.stmt.accept(this));
+  
+  @override
+  Decl visitVariableDecl(VariableDecl variableDecl) => VariableDecl(variableDecl.name, variableDecl.init?.accept(this));
 }

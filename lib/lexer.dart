@@ -43,7 +43,7 @@ class Lexer extends Iterable<Token> {
     } else if (_isDigit(char)) {
       return _number();
     } else {
-      return _token(switch (char) {
+      final TokenKind kind = switch (char) {
         '(' => .leftParen,
         ')' => .rightParen,
         '{' => .leftBraces,
@@ -62,8 +62,14 @@ class Lexer extends Iterable<Token> {
         '>' => _match(char) ? .greaterGreater : _match('=') ? .greaterEqual : .greater,
         '=' => _match(char) ? .equalEqual : .equal,
         '!' => _match('=') ? .bangEqual : .bang,
-        String() => throw Exception("unknown char: $char."),
-      });
+        String() => .error,
+      };
+
+      if (kind == .error) {
+        return ErrorToken(_currentLexemeLocation(), char, "Unexpect character");
+      }
+
+      return _token(kind);
     }
 
   }
@@ -156,9 +162,14 @@ class Lexer extends Iterable<Token> {
     while (!_isAtEnd && _isDigit(_peek())) {
       _advance();
     }
+    
     if (_isAlpha(_peek())) {
-      throw Exception("Found alpha characters attached to number.");
+      while (!_isAtEnd && (_isAlphaNumeric(_peek()) || _peek() == '_')) {
+        _advance();
+      }
+      return ErrorToken(_currentLexemeLocation(), _currentLexeme(), "extra text after expected end of number");
     }
+
     return _token(.constant);
   }
 

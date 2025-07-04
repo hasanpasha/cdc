@@ -2,7 +2,7 @@
 import 'package:cdc/ast.dart';
 import 'package:cdc/tacky_ir.dart';
 
-class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value> {
+class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value>, DeclVisitor<Value>, BlockItemVisitor<Value> {
   List<Instr> _instrs = [];
   int _tmpCount = 0;
   int _labelCount = 0;
@@ -25,7 +25,7 @@ class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value> {
     try {
       final List<Instr> instrs = [];
       _instrs = instrs;
-      function.body.accept(this);
+      function.body.forEach((item) => item.accept(this));
       return FunctionIR(function.name.lexeme, instrs);
     } finally {
       _instrs = currentInstrs;
@@ -122,5 +122,47 @@ class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value> {
   String _makeLabel(String prefix) {
     final name = "$prefix${_labelCount++}";
     return name;
+  }
+  
+  @override
+  Value visitAssignmentExpr(AssignmentExpr assignmentExpr) {
+    // TODO: implement visitAssignmentExpr
+    throw UnimplementedError();
+  }
+  
+  @override
+  Value visitDeclBlockItem(DeclBlockItem declBlockItem) {
+    // TODO: implement visitDeclBlockItem
+    throw UnimplementedError();
+  }
+  
+  @override
+  visitExpressionStmt(ExpressionStmt expressionStmt) {
+    // TODO: implement visitExpressionStmt
+    throw UnimplementedError();
+  }
+  
+  @override
+  visitNullStmt(NullStmt nullStmt) {
+    // TODO: implement visitNullStmt
+    throw UnimplementedError();
+  }
+  
+  @override
+  Value visitStmtBlockItem(StmtBlockItem stmtBlockItem) {
+    // TODO: implement visitStmtBlockItem
+    throw UnimplementedError();
+  }
+  
+  @override
+  Value visitVarExpr(VarExpr varExpr) {
+    // TODO: implement visitVarExpr
+    throw UnimplementedError();
+  }
+  
+  @override
+  Value visitVariableDecl(VariableDecl variableDecl) {
+    // TODO: implement visitVariableDecl
+    throw UnimplementedError();
   }
 }

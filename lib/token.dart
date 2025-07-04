@@ -33,6 +33,7 @@ enum TokenKind {
   lessEqual,
   greaterEqual,
   eoi,
+  error,
 }
 
 class Location {
@@ -63,4 +64,10 @@ class Token {
 
   @override
   String toString() => "$location: $kind $lexeme";
+}
+
+class ErrorToken extends Token {
+  final String message;
+
+  ErrorToken(Location location, String lexeme, this.message) : super(.error, lexeme, location);
 }
