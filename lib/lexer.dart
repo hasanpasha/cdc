@@ -140,7 +140,7 @@ class Lexer extends Iterable<Token> {
   }
   
   Token _keywordOrIdentifier() {
-    while (!_isAtEnd && _isAlphaNumeric(_peek())) {
+    while (!_isAtEnd && (_isAlphaNumeric(_peek()) || _peek() == '_')) {
       _advance();
     }
     
