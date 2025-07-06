@@ -170,7 +170,6 @@ Future main(List<String> arguments) async {
   // await File(asmOutPath.path).delete();
 }
 
-// TODO: refactor
 extension on Uri {
   Future<String> read() async => await File(path).readAsString();
   Future<List<Token>> readAsTokens() async => Lexer(await read(), path).toList();

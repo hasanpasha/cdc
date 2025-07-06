@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:cdc/ast.dart';
 import 'package:cdc/token.dart';
 
