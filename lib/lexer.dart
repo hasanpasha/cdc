@@ -104,14 +104,14 @@ class Lexer extends Iterable<Token> {
       while (!_isAtEnd && _match('\n')) {
         _advance();
       }
-      _skipWhitespace();
+      if (!_isAtEnd) _skipWhitespace();
     }
 
     if (!_isAtEnd && _matchString("/*")) {
       while (!_isAtEnd && _match('*/')) {
         _advance();
       }
-      _skipWhitespace();
+      if (!_isAtEnd) _skipWhitespace();
     }
   }
   
@@ -119,7 +119,13 @@ class Lexer extends Iterable<Token> {
     if (_isAtEnd) return false;
     final needleLen = needle.length;
     if (_current+needleLen >= _sourceCode.length) return false;
-    return (_sourceCode.substring(_current, _current+needleLen) == needle);
+    if (_sourceCode.substring(_current, _current+needleLen) == needle) {
+      for (int i = 0; i < needleLen; i++) {
+        _advance();
+      }
+      return true;
+    }
+    return false;
   }
   
   bool _match(String needle) {
@@ -164,7 +170,7 @@ class Lexer extends Iterable<Token> {
       _advance();
     }
     
-    if (_isAlpha(_peek())) {
+    if (!_isAtEnd && _isAlpha(_peek())) {
       while (!_isAtEnd && (_isAlphaNumeric(_peek()) || _peek() == '_')) {
         _advance();
       }
