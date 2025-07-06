@@ -108,7 +108,7 @@ class Lexer extends Iterable<Token> {
     }
 
     if (!_isAtEnd && _matchString("/*")) {
-      while (!_isAtEnd && _match('*/')) {
+      while (!_isAtEnd && _matchString('*/')) {
         _advance();
       }
       if (!_isAtEnd) _skipWhitespace();
