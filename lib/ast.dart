@@ -1,8 +1,10 @@
 import 'token.dart';
 
+import 'package:equatable/equatable.dart';
+
 part 'ast.g.dart';
 
-class ProgramAST {
+class ProgramAST extends Equatable {
   final FunctionAST function;
 
   ProgramAST({required this.function});
@@ -11,13 +13,25 @@ class ProgramAST {
   String toString() => ASTPrinter().visitProgram(this);
 
   String prettyTree() => ASTPrettier(showLines: true).visitProgram(this);
+  
+  @override
+  List<Object?> get props => [function];
+
+  @override
+  bool? get stringify => true;
 }
 
-class FunctionAST {
+class FunctionAST extends Equatable {
   final Token name;
   final List<BlockItem> body;
 
   FunctionAST({required this.name, required this.body});
+
+  @override
+  List<Object?> get props => [name, body];
+
+  @override
+  bool? get stringify => true;
 }
 
 class ASTPrinter

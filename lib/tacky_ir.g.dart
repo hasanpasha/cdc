@@ -17,10 +17,16 @@ abstract class InstrVisitor<R> {
   R visitLabelInstr(LabelInstr labelInstr);
 }
 
-class ReturnInstr extends Instr {
+class ReturnInstr extends Instr with EquatableMixin {
   ReturnInstr(this.value);
 
   final Value value;
+
+  @override
+  List<Object?> get props => [value];
+
+  @override
+  bool? get stringify => true;
 
   @override
   R accept<R>(InstrVisitor<R> visitor) {
@@ -28,7 +34,7 @@ class ReturnInstr extends Instr {
   }
 }
 
-class UnaryInstr extends Instr {
+class UnaryInstr extends Instr with EquatableMixin {
   UnaryInstr(this.operator, this.src, this.dst);
 
   final UnaryOperator operator;
@@ -38,12 +44,18 @@ class UnaryInstr extends Instr {
   final Value dst;
 
   @override
+  List<Object?> get props => [operator, src, dst];
+
+  @override
+  bool? get stringify => true;
+
+  @override
   R accept<R>(InstrVisitor<R> visitor) {
     return visitor.visitUnaryInstr(this);
   }
 }
 
-class BinaryInstr extends Instr {
+class BinaryInstr extends Instr with EquatableMixin {
   BinaryInstr(this.operator, this.lhs, this.rhs, this.dst);
 
   final BinaryOperator operator;
@@ -55,12 +67,18 @@ class BinaryInstr extends Instr {
   final Value dst;
 
   @override
+  List<Object?> get props => [operator, lhs, rhs, dst];
+
+  @override
+  bool? get stringify => true;
+
+  @override
   R accept<R>(InstrVisitor<R> visitor) {
     return visitor.visitBinaryInstr(this);
   }
 }
 
-class CopyInstr extends Instr {
+class CopyInstr extends Instr with EquatableMixin {
   CopyInstr(this.src, this.dst);
 
   final Value src;
@@ -68,15 +86,27 @@ class CopyInstr extends Instr {
   final Value dst;
 
   @override
+  List<Object?> get props => [src, dst];
+
+  @override
+  bool? get stringify => true;
+
+  @override
   R accept<R>(InstrVisitor<R> visitor) {
     return visitor.visitCopyInstr(this);
   }
 }
 
-class JumpInstr extends Instr {
+class JumpInstr extends Instr with EquatableMixin {
   JumpInstr(this.target);
 
   final String target;
+
+  @override
+  List<Object?> get props => [target];
+
+  @override
+  bool? get stringify => true;
 
   @override
   R accept<R>(InstrVisitor<R> visitor) {
@@ -84,7 +114,7 @@ class JumpInstr extends Instr {
   }
 }
 
-class JumpIfZeroInstr extends Instr {
+class JumpIfZeroInstr extends Instr with EquatableMixin {
   JumpIfZeroInstr(this.condition, this.target);
 
   final Value condition;
@@ -92,12 +122,18 @@ class JumpIfZeroInstr extends Instr {
   final String target;
 
   @override
+  List<Object?> get props => [condition, target];
+
+  @override
+  bool? get stringify => true;
+
+  @override
   R accept<R>(InstrVisitor<R> visitor) {
     return visitor.visitJumpIfZeroInstr(this);
   }
 }
 
-class JumpIfNotZeroInstr extends Instr {
+class JumpIfNotZeroInstr extends Instr with EquatableMixin {
   JumpIfNotZeroInstr(this.condition, this.target);
 
   final Value condition;
@@ -105,15 +141,27 @@ class JumpIfNotZeroInstr extends Instr {
   final String target;
 
   @override
+  List<Object?> get props => [condition, target];
+
+  @override
+  bool? get stringify => true;
+
+  @override
   R accept<R>(InstrVisitor<R> visitor) {
     return visitor.visitJumpIfNotZeroInstr(this);
   }
 }
 
-class LabelInstr extends Instr {
+class LabelInstr extends Instr with EquatableMixin {
   LabelInstr(this.value);
 
   final String value;
+
+  @override
+  List<Object?> get props => [value];
+
+  @override
+  bool? get stringify => true;
 
   @override
   R accept<R>(InstrVisitor<R> visitor) {
@@ -132,10 +180,16 @@ abstract class ValueVisitor<R> {
   R visitVariableValue(VariableValue variableValue);
 }
 
-class ConstantValue extends Value {
+class ConstantValue extends Value with EquatableMixin {
   ConstantValue(this.value);
 
   final String value;
+
+  @override
+  List<Object?> get props => [value];
+
+  @override
+  bool? get stringify => true;
 
   @override
   R accept<R>(ValueVisitor<R> visitor) {
@@ -143,10 +197,16 @@ class ConstantValue extends Value {
   }
 }
 
-class VariableValue extends Value {
+class VariableValue extends Value with EquatableMixin {
   VariableValue(this.name);
 
   final String name;
+
+  @override
+  List<Object?> get props => [name];
+
+  @override
+  bool? get stringify => true;
 
   @override
   R accept<R>(ValueVisitor<R> visitor) {

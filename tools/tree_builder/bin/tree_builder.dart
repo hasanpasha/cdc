@@ -135,6 +135,7 @@ void generate(
       library.body.add(Class((c) => c
         ..name = className
         ..extend = refer(baseName)
+            ..mixins.add(refer('EquatableMixin'))
         ..fields.addAll(fields.entries.map((entry) => Field((f) => f
           ..name = entry.key
           ..type = refer(entry.value)
@@ -144,6 +145,28 @@ void generate(
             ..name = entry.key
             ..toThis = true)))))
         ..methods.add(Method((m) => m
+                  ..name = 'props'
+                  ..annotations.add(CodeExpression(Code('override')))
+                  ..returns = refer('List<Object?>')
+                  ..type = MethodType.getter
+                  ..lambda = true
+                  ..body = Code('[${fields.keys.join(', ')}]'),
+              ),
+            )
+            ..methods.add(
+              Method(
+                (m) => m
+                  ..name = 'stringify'
+                  ..annotations.add(CodeExpression(Code('override')))
+                  ..returns = refer('bool?')
+                  ..type = MethodType.getter
+                  ..lambda = true
+                  ..body = Code('true'),
+              ),
+            )
+            ..methods.add(
+              Method(
+                (m) => m
           ..name = 'accept'
           ..annotations.add(CodeExpression(Code('override')))
           ..returns = refer('R')
