@@ -161,6 +161,8 @@ class Lexer extends Iterable<Token> {
       "int" => _token(.int),
       "void" => _token(.void$),
       "return" => _token(.return$),
+      "if" => _token(.if$),
+      "else" => _token(.else$),
       String() => _token(.identifier),
     };
   }

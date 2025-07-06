@@ -89,6 +89,10 @@ class ASTPrinter
   @override
   String visitStmtBlockItem(StmtBlockItem stmtBlockItem) =>
       "Stmt(${stmtBlockItem.stmt.accept(this)})";
+      
+  @override
+  String visitIfStmt(IfStmt ifStmt) =>
+      "If(${ifStmt.cond.accept(this)}, ${ifStmt.then.accept(this)}, ${ifStmt.else$?.accept(this)})";
 }
 
 class ASTPrettier
@@ -182,6 +186,12 @@ class ASTPrettier
   @override
   String visitStmtBlockItem(StmtBlockItem stmtBlockItem) => _withIndent(
     () => "Stmt($_indent${stmtBlockItem.stmt.accept(this)}$_indentLast)",
+  );
+  
+  @override
+  String visitIfStmt(IfStmt ifStmt) => _withIndent(
+    () =>
+        "If($_indent${ifStmt.cond.accept(this)},$_indent${ifStmt.then.accept(this)},$_indent${ifStmt.else$?.accept(this)}$_indentLast)",
   );
 }
 

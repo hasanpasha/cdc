@@ -44,6 +44,8 @@ enum TokenKind {
   xorEqual,
   lessLessEqual,
   greaterGreaterEqual,
+  if$,
+  else$,
   eoi,
   error,
 }

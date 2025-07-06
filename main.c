@@ -1,9 +1,9 @@
-/* Postfix operators have higher precedence than prefix */
-
 int main(void)
 {
-    int a = 1;
-    int b = !a++;
-    int c = ++a;
-    return (a == 2 && b == 0);
+    int a = 10;
+    int b = 20;
+    if (a + b == 30)
+        return 30;
+    else
+        return 60;
 }

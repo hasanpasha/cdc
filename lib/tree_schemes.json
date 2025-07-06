@@ -25,6 +25,11 @@
         "Expression": {
           "expr": "Expr"
         },
+        "If": {
+          "cond": "Expr",
+          "then": "Stmt",
+          "else$": "Stmt?"
+        },
         "Null": {}
       },
       "Decl": {

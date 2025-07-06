@@ -162,8 +162,10 @@ class Parser {
   Stmt statement() {
     if (_peek().kind == .semicolon) return _nullStmt();
     if (_peek().kind == .return$) return _returnStmt();
+    if (_peek().kind == .if$) return _ifStmt();
     return _expressionStmt();
   }
+
 
   Stmt _nullStmt() {
     _consume(.semicolon, "Expect ';' in a null statement.");
@@ -182,6 +184,20 @@ class Parser {
     _consume(.semicolon, "Expect a ';' at the end of return statement.");
     return ReturnStmt(keyword, expr);
   }
+
+  Stmt _ifStmt() {
+    _consume(.if$, "Expect an `if` keyword.");
+    _consume(.leftParen, "Expect a '(' before `if` condition expr.");
+    final cond = expression();
+    _consume(.rightParen, "Expect a ')' closing `if` condition expr.");
+    final thenStmt = statement();
+    late final Stmt elseStmt;
+    if (_match(.else$)) {
+      elseStmt = statement();
+    } 
+
+    return IfStmt(cond, thenStmt, elseStmt);
+  } 
 
   Map<TokenKind, PrecedenceRule> get _rules => {
     // dart format off
@@ -400,6 +416,14 @@ class Parser {
     return next;
   }
   
+  bool _match(TokenKind kind) {
+    if (_peek().kind == kind) {
+      _advance();
+      return true;
+    }
+    return false;
+  }
+
   void _synchronize() {
     while (!_isAtEnd) {
       if (_peek().kind == .semicolon) {

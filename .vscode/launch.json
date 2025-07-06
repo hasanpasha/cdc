@@ -25,7 +25,10 @@
             "request": "launch",
             "type": "dart",
             "toolArgs": ["--enable-experiment=dot-shorthands"],
-            // "args": ["main.c", "--parse"],
+            "args": [
+                "main.c",
+                "--parse"
+            ],
         },
         
     ]

@@ -215,4 +215,22 @@ class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value>, DeclVisitor, 
       _instrs.add(CopyInstr(init, VariableValue(variableDecl.name.lexeme)));
     }
   }
+  
+  @override
+  visitIfStmt(IfStmt ifStmt) {
+    final cond = ifStmt.cond.accept(this);
+    final String ifEndLabel = (ifStmt.else$ != null) ? _makeLabel("else") : _makeLabel("end");
+    final String? elseEndLabel = (ifStmt.else$ != null) ? _makeLabel("end"): null;
+
+    _instrs.add(JumpIfZeroInstr(cond, ifEndLabel));
+    ifStmt.then.accept(this);
+    if (elseEndLabel != null) {
+      _instrs.add(JumpInstr(elseEndLabel));
+    }
+    _instrs.add(LabelInstr(ifEndLabel));
+    if (elseEndLabel != null) {
+      ifStmt.else$?.accept(this);
+      _instrs.add(LabelInstr(elseEndLabel));
+    }
+  }
 }

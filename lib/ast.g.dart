@@ -54,6 +54,7 @@ abstract class Stmt {
 abstract class StmtVisitor<R> {
   R visitReturnStmt(ReturnStmt returnStmt);
   R visitExpressionStmt(ExpressionStmt expressionStmt);
+  R visitIfStmt(IfStmt ifStmt);
   R visitNullStmt(NullStmt nullStmt);
 }
 
@@ -90,6 +91,27 @@ class ExpressionStmt extends Stmt with EquatableMixin {
   @override
   R accept<R>(StmtVisitor<R> visitor) {
     return visitor.visitExpressionStmt(this);
+  }
+}
+
+class IfStmt extends Stmt with EquatableMixin {
+  IfStmt(this.cond, this.then, this.else$);
+
+  final Expr cond;
+
+  final Stmt then;
+
+  final Stmt? else$;
+
+  @override
+  List<Object?> get props => [cond, then, else$];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(StmtVisitor<R> visitor) {
+    return visitor.visitIfStmt(this);
   }
 }
 
