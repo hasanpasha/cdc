@@ -63,14 +63,22 @@ class Parser {
   final List<Token> tokens;
   int _currentIdx = 0;
 
+  final Map<String, String> symbols = {};
+  int _varCount = 0;
+  final List<(Location, String)> issues = [];
+
   static ProgramAST parse(List<Token> tokens, { bool constantFold = false }) {
     final parser = Parser(tokens);
 
     var program = parser.parseProgram();
-    
-    if (constantFold) {
-      program = ConstantFolder.transform(program);
+
+    if (parser.issues.isNotEmpty) {
+      throw MultiIssues(parser.issues);
     }
+    
+    // if (constantFold) {
+    //   program = ConstantFolder.transform(program);
+    // }
 
     return program;
   }
@@ -131,13 +139,23 @@ class Parser {
   Decl _variableDecl() {
     _consume(.int, "Expect a variable type.");
     Token name = _consume(.identifier, "Expect a variable identifier.");
+
+    late final String uniqueName;
+    if (symbols.containsKey(name.lexeme)) {
+      issues.add((name.location, "Duplicate variable declaration."));
+      uniqueName = symbols[name.lexeme]!;
+    } else {
+      uniqueName = _makeTemp(name.lexeme);
+      symbols[name.lexeme] = uniqueName;
+    }
+    
     Expr? init;
     if (_peek().kind == .equal) {
       _consume(.equal, "Expect '=' before initializer.");
       init = expression();
     }
     _consume(.semicolon, "Expect a ';' at the end of a variable declaration.");
-    return VariableDecl(name, init);
+    return VariableDecl(name.copyWith(lexeme: uniqueName), init);
   }
 
   Stmt statement() {
@@ -275,14 +293,23 @@ class Parser {
 
   VarExpr _var() {
     final identifier = _consume(.identifier, "Expect an identifier.");
-    return VarExpr(identifier);
+
+    if (!symbols.containsKey(identifier.lexeme)) {
+      issues.add((identifier.location, "undeclared variable '${identifier.lexeme}'"));
+    }
+
+    return VarExpr(identifier.copyWith(lexeme: symbols[identifier.lexeme]));
   }
 
   Expr _assignment(Expr left) {
+    if (left is! VarExpr) {
+      issues.add((ExprLocationExtractor.extract(left), "Invalid lvalue!"));
+    }
+    
     final operator = _consumeOneOf([
       .equal,
     ]);
-    
+
     final nextRule = _rules[operator.kind]!;
     final right = _parsePrecedence(nextRule.precedence);
   
@@ -349,83 +376,116 @@ class Parser {
     }
   }
   
+  String _makeTemp(String lexeme) => "r.$lexeme.${_varCount++}";
 }
 
-class ConstantFolder implements StmtVisitor<Stmt>, ExprVisitor<Expr>, DeclVisitor<Decl>, BlockItemVisitor<BlockItem> {
-  static ProgramAST transform(ProgramAST program) => ConstantFolder().visitProgram(program);
+// class ConstantFolder implements StmtVisitor<Stmt>, ExprVisitor<Expr>, DeclVisitor<Decl>, BlockItemVisitor<BlockItem> {
+//   static ProgramAST transform(ProgramAST program) => ConstantFolder().visitProgram(program);
   
-  ProgramAST visitProgram(ProgramAST program) => ProgramAST(function: visitFunction(program.function));
+//   ProgramAST visitProgram(ProgramAST program) => ProgramAST(function: visitFunction(program.function));
   
-  visitFunction(FunctionAST function) => FunctionAST(
-    name: function.name, 
-    body: function.body.map((item) => item.accept(this)).toList()
-  );
+//   visitFunction(FunctionAST function) => FunctionAST(
+//     name: function.name, 
+//     body: function.body.map((item) => item.accept(this)).toList()
+//   );
   
-  @override
-  Expr visitBinaryExpr(BinaryExpr binaryExpr) {
-    final lhs = binaryExpr.lhs.accept(this);
-    final rhs = binaryExpr.rhs.accept(this);
+//   @override
+//   Expr visitBinaryExpr(BinaryExpr binaryExpr) {
+//     final lhs = binaryExpr.lhs.accept(this);
+//     final rhs = binaryExpr.rhs.accept(this);
 
-    if (lhs is ConstantExpr && rhs is ConstantExpr) {
-      final left = int.parse(lhs.value.lexeme);
-      final right = int.parse(rhs.value.lexeme);
-      final result = switch (binaryExpr.operator.kind) {
-        .plus => left+right,
-        .hyphen => left-right,
-        .asterisk => left*right,
-        .forwardSlash => left/right,
-        .percent => left%right,
-        _ => throw Exception("unexpected operator: ${binaryExpr.operator.kind.name}"),
-      };
-      return ConstantExpr(Token(.constant, result.toInt().toString(), lhs.value.location));
-    }
+//     if (lhs is ConstantExpr && rhs is ConstantExpr) {
+//       final left = int.parse(lhs.value.lexeme);
+//       final right = int.parse(rhs.value.lexeme);
+//       final result = switch (binaryExpr.operator.kind) {
+//         .plus => left+right,
+//         .hyphen => left-right,
+//         .asterisk => left*right,
+//         .forwardSlash => left/right,
+//         .percent => left%right,
+//         _ => throw Exception("unexpected operator: ${binaryExpr.operator.kind.name}"),
+//       };
+//       return ConstantExpr(Token(.constant, result.toInt().toString(), lhs.value.location));
+//     }
 
-    return BinaryExpr(binaryExpr.operator, lhs, rhs);
-  }
+//     return BinaryExpr(binaryExpr.operator, lhs, rhs);
+//   }
   
-  @override
-  Expr visitConstantExpr(ConstantExpr constantExpr) => constantExpr;
+//   @override
+//   Expr visitConstantExpr(ConstantExpr constantExpr) => constantExpr;
   
-  @override
-  Stmt visitReturnStmt(ReturnStmt returnStmt) => ReturnStmt(returnStmt.keyword, returnStmt.expr.accept(this));
+//   @override
+//   Stmt visitReturnStmt(ReturnStmt returnStmt) => ReturnStmt(returnStmt.keyword, returnStmt.expr.accept(this));
   
-  @override
-  Expr visitUnaryExpr(UnaryExpr unaryExpr) {
-    final operand = unaryExpr.operand.accept(this);
+//   @override
+//   Expr visitUnaryExpr(UnaryExpr unaryExpr) {
+//     final operand = unaryExpr.operand.accept(this);
 
-    if (operand is ConstantExpr) {
-      final right = int.parse(operand.value.lexeme);
-      final result = switch (unaryExpr.operator.kind) {
-        .hyphen => -right,
-        .tilde => ~right,
-        _ => throw Exception("unexpected operator: ${unaryExpr.operator.kind.name}"),
-      };
-      return ConstantExpr(Token(.constant, result.toString(), operand.value.location));
-    }
+//     if (operand is ConstantExpr) {
+//       final right = int.parse(operand.value.lexeme);
+//       final result = switch (unaryExpr.operator.kind) {
+//         .hyphen => -right,
+//         .tilde => ~right,
+//         _ => throw Exception("unexpected operator: ${unaryExpr.operator.kind.name}"),
+//       };
+//       return ConstantExpr(Token(.constant, result.toString(), operand.value.location));
+//     }
 
-    return UnaryExpr(unaryExpr.operator, operand);
-  }
+//     return UnaryExpr(unaryExpr.operator, operand);
+//   }
+  
+//   @override
+//   Expr visitAssignmentExpr(AssignmentExpr assignmentExpr) => 
+//     AssignmentExpr(assignmentExpr.lhs.accept(this), assignmentExpr.rhs.accept(this));
+  
+//   @override
+//   Expr visitVarExpr(VarExpr varExpr) => varExpr;
+  
+//   @override
+//   Stmt visitExpressionStmt(ExpressionStmt expressionStmt) => 
+//     ExpressionStmt(expressionStmt.expr.accept(this));
+  
+//   @override
+//   Stmt visitNullStmt(NullStmt nullStmt) => nullStmt;
+  
+//   @override
+//   BlockItem visitDeclBlockItem(DeclBlockItem declBlockItem) => DeclBlockItem(declBlockItem.decl.accept(this));
+  
+//   @override
+//   BlockItem visitStmtBlockItem(StmtBlockItem stmtBlockItem) => StmtBlockItem(stmtBlockItem.stmt.accept(this));
+  
+//   @override
+//   Decl visitVariableDecl(VariableDecl variableDecl) => VariableDecl(variableDecl.name, variableDecl.init?.accept(this));
+// }
+
+class MultiIssues implements Exception {
+  final List<(Location, String)> issues;
+  final String? message;
+
+  MultiIssues(this.issues, [this.message]);
+
+  @override
+  String toString() => 
+"""Encountered ${issues.length} issues:
+${issues.map((pair) => "${pair.$1}: ${pair.$2}").join("\n")}${message != null ? "\n$message" : '' }""";
+}
+
+class ExprLocationExtractor implements ExprVisitor<Location> {
+  static Location extract(Expr expr) => expr.accept(ExprLocationExtractor());
   
   @override
-  Expr visitAssignmentExpr(AssignmentExpr assignmentExpr) => 
-    AssignmentExpr(assignmentExpr.lhs.accept(this), assignmentExpr.rhs.accept(this));
-  
+  Location visitAssignmentExpr(AssignmentExpr assignmentExpr) =>
+    assignmentExpr.lhs.accept(this);
+
   @override
-  Expr visitVarExpr(VarExpr varExpr) => varExpr;
-  
+  Location visitBinaryExpr(BinaryExpr binaryExpr) => binaryExpr.operator.location;
+
   @override
-  Stmt visitExpressionStmt(ExpressionStmt expressionStmt) => 
-    ExpressionStmt(expressionStmt.expr.accept(this));
-  
+  Location visitConstantExpr(ConstantExpr constantExpr) => constantExpr.value.location;
+
   @override
-  Stmt visitNullStmt(NullStmt nullStmt) => nullStmt;
-  
+  Location visitUnaryExpr(UnaryExpr unaryExpr) => unaryExpr.operator.location;
+
   @override
-  BlockItem visitDeclBlockItem(DeclBlockItem declBlockItem) => DeclBlockItem(declBlockItem.decl.accept(this));
-  
-  @override
-  BlockItem visitStmtBlockItem(StmtBlockItem stmtBlockItem) => StmtBlockItem(stmtBlockItem.stmt.accept(this));
-  
-  @override
-  Decl visitVariableDecl(VariableDecl variableDecl) => VariableDecl(variableDecl.name, variableDecl.init?.accept(this));
+  Location visitVarExpr(VarExpr varExpr) => varExpr.identifier.location;
 }

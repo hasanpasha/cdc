@@ -64,6 +64,9 @@ class Token {
 
   @override
   String toString() => "$location: $kind $lexeme";
+
+  Token copyWith({TokenKind? kind, String? lexeme, Location? location}) => 
+    Token(kind ?? this.kind, lexeme ?? this.lexeme, location ?? this.location);
 }
 
 class ErrorToken extends Token {

@@ -1,6 +1,4 @@
 
-import 'dart:async';
-
 import 'package:cdc/cdc.dart';
 
 import 'x86_64_asm.dart';

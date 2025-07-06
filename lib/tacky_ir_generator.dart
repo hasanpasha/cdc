@@ -2,7 +2,7 @@
 import 'package:cdc/ast.dart';
 import 'package:cdc/tacky_ir.dart';
 
-class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value>, DeclVisitor<Value>, BlockItemVisitor<Value> {
+class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value>, DeclVisitor, BlockItemVisitor {
   List<Instr> _instrs = [];
   int _tmpCount = 0;
   int _labelCount = 0;
@@ -25,7 +25,10 @@ class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value>, DeclVisitor<V
     try {
       final List<Instr> instrs = [];
       _instrs = instrs;
-      function.body.forEach((item) => item.accept(this));
+      for (var item in function.body) {
+        item.accept(this);
+      }
+      _instrs.add(ReturnInstr(ConstantValue('0')));
       return FunctionIR(function.name.lexeme, instrs);
     } finally {
       _instrs = currentInstrs;
@@ -126,43 +129,33 @@ class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value>, DeclVisitor<V
   
   @override
   Value visitAssignmentExpr(AssignmentExpr assignmentExpr) {
-    // TODO: implement visitAssignmentExpr
-    throw UnimplementedError();
+    final result = assignmentExpr.rhs.accept(this);
+    final dst = assignmentExpr.lhs.accept(this);
+    _instrs.add(CopyInstr(result, dst));
+
+    return dst;
   }
   
   @override
-  Value visitDeclBlockItem(DeclBlockItem declBlockItem) {
-    // TODO: implement visitDeclBlockItem
-    throw UnimplementedError();
-  }
+  visitDeclBlockItem(DeclBlockItem declBlockItem) => declBlockItem.decl.accept(this);
   
   @override
-  visitExpressionStmt(ExpressionStmt expressionStmt) {
-    // TODO: implement visitExpressionStmt
-    throw UnimplementedError();
-  }
+  visitExpressionStmt(ExpressionStmt expressionStmt) => expressionStmt.expr.accept(this);
   
   @override
-  visitNullStmt(NullStmt nullStmt) {
-    // TODO: implement visitNullStmt
-    throw UnimplementedError();
-  }
+  visitNullStmt(NullStmt nullStmt) {}
   
   @override
-  Value visitStmtBlockItem(StmtBlockItem stmtBlockItem) {
-    // TODO: implement visitStmtBlockItem
-    throw UnimplementedError();
-  }
+  visitStmtBlockItem(StmtBlockItem stmtBlockItem) => stmtBlockItem.stmt.accept(this);
   
   @override
-  Value visitVarExpr(VarExpr varExpr) {
-    // TODO: implement visitVarExpr
-    throw UnimplementedError();
-  }
+  Value visitVarExpr(VarExpr varExpr) => VariableValue(varExpr.identifier.lexeme);
   
   @override
-  Value visitVariableDecl(VariableDecl variableDecl) {
-    // TODO: implement visitVariableDecl
-    throw UnimplementedError();
+  visitVariableDecl(VariableDecl variableDecl) {
+    if (variableDecl.init != null) {
+      final init = variableDecl.init!.accept(this);
+      _instrs.add(CopyInstr(init, VariableValue(variableDecl.name.lexeme)));
+    }
   }
 }

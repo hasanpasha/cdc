@@ -122,7 +122,8 @@ class ASTPrettier
   );
   
   @override
-  String visitConstantExpr(ConstantExpr constant) => _withIndent(() => "Constant(${constant.value})");
+  String visitConstantExpr(ConstantExpr constant) =>
+      _withIndent(() => "Constant(${constant.value.lexeme})");
   
   @override
   String visitAssignmentExpr(AssignmentExpr assignmentExpr) => _withIndent(
@@ -132,7 +133,7 @@ class ASTPrettier
 
   @override
   String visitVarExpr(VarExpr varExpr) =>
-      _withIndent(() => "Var(${varExpr.identifier})");
+      _withIndent(() => "Var(${varExpr.identifier.lexeme})");
 
   @override
   String visitExpressionStmt(ExpressionStmt expressionStmt) => _withIndent(
