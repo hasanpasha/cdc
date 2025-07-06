@@ -101,14 +101,14 @@ class Lexer extends Iterable<Token> {
   
   void _skipComments() {
     if (!_isAtEnd && _matchString("//")) {
-      while (!_isAtEnd && _match('\n')) {
+      while (!_isAtEnd && !_match('\n')) {
         _advance();
       }
       if (!_isAtEnd) _skipWhitespace();
     }
 
     if (!_isAtEnd && _matchString("/*")) {
-      while (!_isAtEnd && _matchString('*/')) {
+      while (!_isAtEnd && !_matchString('*/')) {
         _advance();
       }
       if (!_isAtEnd) _skipWhitespace();
