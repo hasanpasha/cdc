@@ -33,9 +33,10 @@ class Lexer extends Iterable<Token> {
   
   Token _lexNext() {
     _skipWhitespace();
+    _start = _current;
+    
     if (_isAtEnd) return _token(.eoi);
 
-    _start = _current;
     final char = _advance();
 
     if (_isAlpha(char)) {
