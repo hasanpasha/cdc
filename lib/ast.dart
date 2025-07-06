@@ -40,7 +40,12 @@ class ASTPrinter
       ", ${binary.lhs.accept(this)}, ${binary.rhs.accept(this)})"; 
 
   @override
-  String visitUnaryExpr(UnaryExpr unary) => "Unary(${unary.operator.kind.name}, ${unary.operand.accept(this)})";
+  String visitPrefixUnaryExpr(PrefixUnaryExpr unary) =>
+      "PrefixUnary(${unary.operator.kind.name}, ${unary.operand.accept(this)})";
+
+  @override
+  String visitPostfixUnaryExpr(PostfixUnaryExpr unary) =>
+      "PostfixUnary(${unary.operator.kind.name}, ${unary.operand.accept(this)})";
   
   @override
   String visitConstantExpr(ConstantExpr constant) => "Constant(${constant.value})";
@@ -116,9 +121,15 @@ class ASTPrettier
   ); 
 
   @override
-  String visitUnaryExpr(UnaryExpr unary) => _withIndent(
+  String visitPrefixUnaryExpr(PrefixUnaryExpr unary) => _withIndent(
     () =>
-        "Unary($_indent${unary.operator.kind.name},$_indent${unary.operand.accept(this)}$_indentLast)",
+        "PrefixUnary($_indent${unary.operator.kind.name},$_indent${unary.operand.accept(this)}$_indentLast)",
+  );
+
+  @override
+  String visitPostfixUnaryExpr(PostfixUnaryExpr unary) => _withIndent(
+    () =>
+        "PostfixUnary($_indent${unary.operator.kind.name},$_indent${unary.operand.accept(this)}$_indentLast)",
   );
   
   @override
@@ -165,8 +176,13 @@ class ExprPolishNotation implements ExprVisitor<String> {
   String visitBinaryExpr(BinaryExpr binaryExpr) =>
       "(${binaryExpr.operator.lexeme} ${binaryExpr.lhs.accept(this)} ${binaryExpr.rhs.accept(this)})";
 
+  // TODO: distinguish between pre and postfix unary
   @override
-  String visitUnaryExpr(UnaryExpr unaryExpr) =>
+  String visitPrefixUnaryExpr(PrefixUnaryExpr unaryExpr) =>
+      "(${unaryExpr.operator.lexeme} ${unaryExpr.operand.accept(this)})";
+
+  @override
+  String visitPostfixUnaryExpr(PostfixUnaryExpr unaryExpr) =>
       "(${unaryExpr.operator.lexeme} ${unaryExpr.operand.accept(this)})";
 
   @override

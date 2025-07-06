@@ -1,6 +1,7 @@
 
 import 'package:cdc/ast.dart';
 import 'package:cdc/tacky_ir.dart';
+import 'package:cdc/token.dart';
 
 class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value>, DeclVisitor, BlockItemVisitor {
   List<Instr> _instrs = [];
@@ -97,17 +98,52 @@ class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value>, DeclVisitor, 
   }
   
   @override
-  Value visitUnaryExpr(UnaryExpr unary) {
-    final UnaryOperator operator = switch(unary.operator.kind) {
-      .hyphen => .negate,
-      .tilde => .complement,
-      .bang => .not,
-      _ => throw UnimplementedError("Can't convert ${unary.operator.kind} to unary operator."),
-    };
+  Value visitPrefixUnaryExpr(PrefixUnaryExpr unary) {
     final src = unary.operand.accept(this);
     final dst = _makeTempVariable();
 
-    _instrs.add(UnaryInstr(operator, src, dst));
+    if (<TokenKind>[.plusPlus, .hyphenHyphen].contains(unary.operator.kind)) {
+      final BinaryOperator operator = switch(unary.operator.kind) {
+        .plusPlus => .add,
+        .hyphenHyphen => .subtract,
+        _ => throw UnimplementedError("Can't convert ${unary.operator.kind} to unary operator."),
+      };
+
+      _instrs.addAll([
+        BinaryInstr(operator, src, ConstantValue('1'), src),
+        CopyInstr(src, dst),
+      ]);
+    } else {
+      final UnaryOperator operator = switch(unary.operator.kind) {
+        .hyphen => .negate,
+        .tilde => .complement,
+        .bang => .not,
+        _ => throw UnimplementedError("Can't convert ${unary.operator.kind} to unary operator."),
+      };
+      _instrs.add(UnaryInstr(operator, src, dst));
+    }
+
+    return dst;
+  }
+
+  @override
+  Value visitPostfixUnaryExpr(PostfixUnaryExpr unary) {
+    final src = unary.operand.accept(this);
+    final dst = _makeTempVariable();
+
+    if (<TokenKind>[.plusPlus, .hyphenHyphen].contains(unary.operator.kind)) {
+      final BinaryOperator operator = switch(unary.operator.kind) {
+        .plusPlus => .add,
+        .hyphenHyphen => .subtract,
+        _ => throw UnimplementedError("Can't convert ${unary.operator.kind} to unary operator."),
+      };
+      _instrs.addAll([
+        CopyInstr(src, dst),
+        BinaryInstr(operator, src, ConstantValue('1'), src),
+      ]);
+    } else {
+      
+    }
 
     return dst;
   }
@@ -131,7 +167,28 @@ class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value>, DeclVisitor, 
   Value visitAssignmentExpr(AssignmentExpr assignmentExpr) {
     final result = assignmentExpr.rhs.accept(this);
     final dst = assignmentExpr.lhs.accept(this);
-    _instrs.add(CopyInstr(result, dst));
+    
+    if (assignmentExpr.operator.kind == .equal) {
+      _instrs.add(CopyInstr(result, dst));
+    } else {
+      final BinaryOperator operator = switch (assignmentExpr.operator.kind) {
+        .plusEqual => .add,
+        .hyphenEqual => .subtract,
+        .starEqual => .multiply,
+        .forwardSlashEqual => .divide,
+        .percentEqual => .remainder,
+        .andEqual => .band,
+        .orEqual => .bor,
+        .xorEqual => .xor,
+        .lessLessEqual => .shl,
+        .greaterGreaterEqual => .shr,
+        _ => throw Exception("unhandled."),
+      };
+
+      _instrs.addAll([
+        BinaryInstr(operator, dst, result, dst),
+      ]);
+    }
 
     return dst;
   }

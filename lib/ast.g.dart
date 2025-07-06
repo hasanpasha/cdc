@@ -110,7 +110,8 @@ abstract class Expr {
 abstract class ExprVisitor<R> {
   R visitConstantExpr(ConstantExpr constantExpr);
   R visitVarExpr(VarExpr varExpr);
-  R visitUnaryExpr(UnaryExpr unaryExpr);
+  R visitPrefixUnaryExpr(PrefixUnaryExpr prefixUnaryExpr);
+  R visitPostfixUnaryExpr(PostfixUnaryExpr postfixUnaryExpr);
   R visitBinaryExpr(BinaryExpr binaryExpr);
   R visitAssignmentExpr(AssignmentExpr assignmentExpr);
 }
@@ -137,8 +138,8 @@ class VarExpr extends Expr {
   }
 }
 
-class UnaryExpr extends Expr {
-  UnaryExpr(this.operator, this.operand);
+class PrefixUnaryExpr extends Expr {
+  PrefixUnaryExpr(this.operator, this.operand);
 
   final Token operator;
 
@@ -146,7 +147,20 @@ class UnaryExpr extends Expr {
 
   @override
   R accept<R>(ExprVisitor<R> visitor) {
-    return visitor.visitUnaryExpr(this);
+    return visitor.visitPrefixUnaryExpr(this);
+  }
+}
+
+class PostfixUnaryExpr extends Expr {
+  PostfixUnaryExpr(this.operator, this.operand);
+
+  final Token operator;
+
+  final Expr operand;
+
+  @override
+  R accept<R>(ExprVisitor<R> visitor) {
+    return visitor.visitPostfixUnaryExpr(this);
   }
 }
 
@@ -166,7 +180,9 @@ class BinaryExpr extends Expr {
 }
 
 class AssignmentExpr extends Expr {
-  AssignmentExpr(this.lhs, this.rhs);
+  AssignmentExpr(this.operator, this.lhs, this.rhs);
+
+  final Token operator;
 
   final Expr lhs;
 

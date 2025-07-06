@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cdc/ast.dart';
 import 'package:cdc/token.dart';
 
@@ -15,6 +17,7 @@ enum Precedence {
   term,   // +-
   factor, // */%
   unary,  // - + ~ !
+  unaryPostfix, // ++ -- () []
   primary; // '1'  'i' 'name' 'main'
 
   bool operator <=(Precedence other) {
@@ -208,6 +211,18 @@ class Parser {
     .andAnd : PrecedenceRule(infixFn: _binary, precedence: .land),
     .orOr : PrecedenceRule(infixFn: _binary, precedence: .lor),
     .equal: PrecedenceRule(infixFn: _assignment, precedence: .assignment),
+    .plusEqual: PrecedenceRule(infixFn: _assignment, precedence: .assignment),
+    .hyphenEqual: PrecedenceRule(infixFn: _assignment, precedence: .assignment),
+    .starEqual: PrecedenceRule(infixFn: _assignment, precedence: .assignment),
+    .forwardSlashEqual: PrecedenceRule(infixFn: _assignment, precedence: .assignment),
+    .percentEqual: PrecedenceRule(infixFn: _assignment, precedence: .assignment),
+    .andEqual: PrecedenceRule(infixFn: _assignment, precedence: .assignment),
+    .orEqual: PrecedenceRule(infixFn: _assignment, precedence: .assignment),
+    .xorEqual: PrecedenceRule(infixFn: _assignment, precedence: .assignment),
+    .lessLessEqual: PrecedenceRule(infixFn: _assignment, precedence: .assignment),
+    .greaterGreaterEqual: PrecedenceRule(infixFn: _assignment, precedence: .assignment),
+    .plusPlus: PrecedenceRule(prefixFn: _unary, infixFn: _unaryPostfix, precedence: .unary),
+    .hyphenHyphen: PrecedenceRule(prefixFn: _unary, infixFn: _unaryPostfix, precedence: .unary),
     // dart format on
   };
   
@@ -272,11 +287,31 @@ class Parser {
     return BinaryExpr(operator, lhs, rhs);
   }
 
-  UnaryExpr _unary() {
-    final operator = _consumeOneOf([.hyphen, .tilde, .bang]);
+  bool _isLvalue(Expr expr) => expr is VarExpr;
+
+  PrefixUnaryExpr _unary() {
+    final operator = _consumeOneOf([.hyphen, .tilde, .bang, .plusPlus, .hyphenHyphen]);
     final operand = _parsePrecedence(.unary);
 
-    return UnaryExpr(operator, operand);
+    if (<TokenKind>[.plusPlus, .hyphenHyphen].contains(operator.kind)) {
+      if (!_isLvalue(operand)) {
+        issues.add((operator.location, "expression must be a modifiable lvalue!"));
+      }
+    }
+
+    return PrefixUnaryExpr(operator, operand);
+  }
+
+  Expr _unaryPostfix(Expr left) {
+    final operator = _consumeOneOf([.plusPlus, .hyphenHyphen]);
+    
+    if (<TokenKind>[.plusPlus, .hyphenHyphen].contains(operator.kind)) {
+      if (!_isLvalue(left)) {
+        issues.add((operator.location, "expression must be a modifiable lvalue!"));
+      }
+    }
+
+    return PostfixUnaryExpr(operator, left);
   }
 
   Expr _group() {
@@ -302,18 +337,28 @@ class Parser {
   }
 
   Expr _assignment(Expr left) {
-    if (left is! VarExpr) {
+    if (!_isLvalue(left)) {
       issues.add((ExprLocationExtractor.extract(left), "Invalid lvalue!"));
     }
     
     final operator = _consumeOneOf([
       .equal,
+      .plusEqual,
+      .hyphenEqual,
+      .starEqual,
+      .forwardSlashEqual,
+      .percentEqual,
+      .andEqual,
+      .orEqual,
+      .xorEqual,
+      .lessLessEqual,
+      .greaterGreaterEqual,
     ]);
 
     final nextRule = _rules[operator.kind]!;
     final right = _parsePrecedence(nextRule.precedence);
   
-    return AssignmentExpr(left, right);
+    return AssignmentExpr(operator, left, right);
   }
   
   Token _consume(TokenKind kind, String msg) {
@@ -484,8 +529,11 @@ class ExprLocationExtractor implements ExprVisitor<Location> {
   Location visitConstantExpr(ConstantExpr constantExpr) => constantExpr.value.location;
 
   @override
-  Location visitUnaryExpr(UnaryExpr unaryExpr) => unaryExpr.operator.location;
-
-  @override
   Location visitVarExpr(VarExpr varExpr) => varExpr.identifier.location;
+  
+  @override
+  Location visitPostfixUnaryExpr(PostfixUnaryExpr postfixUnaryExpr) =>  postfixUnaryExpr.operator.location;
+  
+  @override
+  Location visitPrefixUnaryExpr(PrefixUnaryExpr prefixUnaryExpr) => prefixUnaryExpr.operator.location;
 }
