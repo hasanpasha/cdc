@@ -172,6 +172,7 @@ abstract class ExprVisitor<R> {
   R visitPostfixUnaryExpr(PostfixUnaryExpr postfixUnaryExpr);
   R visitBinaryExpr(BinaryExpr binaryExpr);
   R visitAssignmentExpr(AssignmentExpr assignmentExpr);
+  R visitConditionalExpr(ConditionalExpr conditionalExpr);
 }
 
 class ConstantExpr extends Expr with EquatableMixin {
@@ -285,5 +286,26 @@ class AssignmentExpr extends Expr with EquatableMixin {
   @override
   R accept<R>(ExprVisitor<R> visitor) {
     return visitor.visitAssignmentExpr(this);
+  }
+}
+
+class ConditionalExpr extends Expr with EquatableMixin {
+  ConditionalExpr(this.cond, this.lhs, this.rhs);
+
+  final Expr cond;
+
+  final Expr lhs;
+
+  final Expr rhs;
+
+  @override
+  List<Object?> get props => [cond, lhs, rhs];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(ExprVisitor<R> visitor) {
+    return visitor.visitConditionalExpr(this);
   }
 }

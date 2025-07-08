@@ -62,6 +62,11 @@
           "operator": "Token",
           "lhs": "Expr",
           "rhs": "Expr"
+        },
+        "Conditional": {
+          "cond": "Expr",
+          "lhs": "Expr",
+          "rhs": "Expr"
         }
       }
     }

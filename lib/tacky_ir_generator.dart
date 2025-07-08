@@ -233,4 +233,27 @@ class TackyIRGenerator implements StmtVisitor, ExprVisitor<Value>, DeclVisitor, 
       _instrs.add(LabelInstr(elseEndLabel));
     }
   }
+  
+  @override
+  Value visitConditionalExpr(ConditionalExpr conditionalExpr) {
+    final cond = conditionalExpr.cond.accept(this);
+    final dst = _makeTempVariable();
+  
+    final endLabel = _makeLabel("end");
+    final elseLabel = _makeLabel("else");
+
+
+    _instrs.add(JumpIfZeroInstr(cond, elseLabel));
+    _instrs.addAll([
+      CopyInstr(conditionalExpr.lhs.accept(this), dst),
+      JumpInstr(endLabel),
+      LabelInstr(elseLabel),
+    ]);
+    _instrs.addAll([
+      CopyInstr(conditionalExpr.rhs.accept(this), dst),
+      LabelInstr(endLabel),
+    ]);
+  
+    return dst;
+  }
 }

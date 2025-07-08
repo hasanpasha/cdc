@@ -1,9 +1,11 @@
 int main(void)
 {
-    int a = 10;
+    int a = 50;
     int b = 20;
-    if (a + b == 30)
-        return 30;
+    if (a > 1)
+        return a ? a = 1 : 2;
+    else if (a > 50)
+        return a;
     else
-        return 60;
+        return 2;
 }

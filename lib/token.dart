@@ -46,6 +46,8 @@ enum TokenKind {
   greaterGreaterEqual,
   if$,
   else$,
+  questionMark,
+  colon,
   eoi,
   error,
 }

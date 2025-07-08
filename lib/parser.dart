@@ -4,6 +4,7 @@ import 'package:cdc/token.dart';
 enum Precedence {
   none,
   assignment, // = += -= *= /= %= <<= >>= &= |= ^=
+  ternaryCond, // ?:
   lor,    // logical or
   land,   // logical and
   bor,    // bitwise or
@@ -191,7 +192,7 @@ class Parser {
     final cond = expression();
     _consume(.rightParen, "Expect a ')' closing `if` condition expr.");
     final thenStmt = statement();
-    late final Stmt elseStmt;
+    Stmt? elseStmt;
     if (_match(.else$)) {
       elseStmt = statement();
     } 
@@ -237,6 +238,7 @@ class Parser {
     .greaterGreaterEqual: PrecedenceRule(infixFn: _assignment, precedence: .assignment),
     .plusPlus: PrecedenceRule(prefixFn: _unary, infixFn: _unaryPostfix, precedence: .unary),
     .hyphenHyphen: PrecedenceRule(prefixFn: _unary, infixFn: _unaryPostfix, precedence: .unary),
+    .questionMark: PrecedenceRule(infixFn: _conditional, precedence: .ternaryCond),
     // dart format on
   };
   
@@ -373,6 +375,14 @@ class Parser {
     final right = _parsePrecedence(nextRule.precedence);
   
     return AssignmentExpr(operator, left, right);
+  }
+
+  Expr _conditional(Expr cond) {
+    _consume(.questionMark, "Expect '?' before ternary conditional lhs expr.");
+    final lhs = expression();
+    _consume(.colon, "Expect ':' after ternary conditional lhs expr.");
+    final rhs = _parsePrecedence(.ternaryCond);
+    return ConditionalExpr(cond, lhs, rhs);
   }
   
   Token _consume(TokenKind kind, String msg) {
@@ -558,4 +568,7 @@ class ExprLocationExtractor implements ExprVisitor<Location> {
   
   @override
   Location visitPrefixUnaryExpr(PrefixUnaryExpr prefixUnaryExpr) => prefixUnaryExpr.operator.location;
+  
+  @override
+  Location visitConditionalExpr(ConditionalExpr conditionalExpr) => conditionalExpr.cond.accept(this);
 }

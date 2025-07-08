@@ -93,6 +93,10 @@ class ASTPrinter
   @override
   String visitIfStmt(IfStmt ifStmt) =>
       "If(${ifStmt.cond.accept(this)}, ${ifStmt.then.accept(this)}, ${ifStmt.else$?.accept(this)})";
+      
+  @override
+  String visitConditionalExpr(ConditionalExpr conditionalExpr) =>
+      "Conditional(${conditionalExpr.cond.accept(this)}, ${conditionalExpr.lhs.accept(this)}, ${conditionalExpr.rhs.accept(this)})";
 }
 
 class ASTPrettier
@@ -193,6 +197,12 @@ class ASTPrettier
     () =>
         "If($_indent${ifStmt.cond.accept(this)},$_indent${ifStmt.then.accept(this)},$_indent${ifStmt.else$?.accept(this)}$_indentLast)",
   );
+  
+  @override
+  String visitConditionalExpr(ConditionalExpr conditionalExpr) => _withIndent(
+    () =>
+        "Conditional($_indent${conditionalExpr.cond.accept(this)},$_indent${conditionalExpr.lhs.accept(this)},$_indent${conditionalExpr.rhs.accept(this)}$_indentLast)",
+  );
 }
 
 class ExprPolishNotation implements ExprVisitor<String> {
@@ -219,4 +229,8 @@ class ExprPolishNotation implements ExprVisitor<String> {
 
   @override
   String visitVarExpr(VarExpr varExpr) => varExpr.identifier.lexeme;
+  
+  @override
+  String visitConditionalExpr(ConditionalExpr conditionalExpr) =>
+      "?: ${conditionalExpr.cond.accept(this)} ${conditionalExpr.lhs.accept(this)} ${conditionalExpr.rhs.accept(this)}";
 }
