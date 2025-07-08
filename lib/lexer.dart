@@ -39,7 +39,7 @@ class Lexer extends Iterable<Token> {
 
     final char = _advance();
 
-    if (_isAlpha(char)) {
+    if (_isAlpha(char) || char == '_') {
       return _keywordOrIdentifier();
     } else if (_isDigit(char)) {
       return _number();
@@ -165,6 +165,7 @@ class Lexer extends Iterable<Token> {
       "return" => _token(.return$),
       "if" => _token(.if$),
       "else" => _token(.else$),
+      "goto" => _token(.goto),
       String() => _token(.identifier),
     };
   }

@@ -30,6 +30,13 @@
           "then": "Stmt",
           "else$": "Stmt?"
         },
+        "Goto": {
+          "dest": "Token"
+        },
+        "LabeledStmt": {
+          "label": "Token",
+          "stmt": "Stmt"
+        },
         "Null": {}
       },
       "Decl": {

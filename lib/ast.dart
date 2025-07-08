@@ -97,6 +97,14 @@ class ASTPrinter
   @override
   String visitConditionalExpr(ConditionalExpr conditionalExpr) =>
       "Conditional(${conditionalExpr.cond.accept(this)}, ${conditionalExpr.lhs.accept(this)}, ${conditionalExpr.rhs.accept(this)})";
+      
+  @override
+  String visitGotoStmt(GotoStmt gotoStmt) =>
+      "GotoStmt(${gotoStmt.dest.lexeme})";
+
+  @override
+  String visitLabeledStmtStmt(LabeledStmtStmt labeledStmtStmt) =>
+      "LabeledStmt(${labeledStmtStmt.label.lexeme}, ${labeledStmtStmt.stmt.accept(this)})";
 }
 
 class ASTPrettier
@@ -202,6 +210,16 @@ class ASTPrettier
   String visitConditionalExpr(ConditionalExpr conditionalExpr) => _withIndent(
     () =>
         "Conditional($_indent${conditionalExpr.cond.accept(this)},$_indent${conditionalExpr.lhs.accept(this)},$_indent${conditionalExpr.rhs.accept(this)}$_indentLast)",
+  );
+  
+  @override
+  String visitGotoStmt(GotoStmt gotoStmt) =>
+      _withIndent(() => "GotoStmt(${gotoStmt.dest.lexeme})");
+
+  @override
+  String visitLabeledStmtStmt(LabeledStmtStmt labeledStmtStmt) => _withIndent(
+    () =>
+        "LabeledStmt($_indent${labeledStmtStmt.label.lexeme},$_indent${labeledStmtStmt.stmt.accept(this)}$_indentLast)",
   );
 }
 

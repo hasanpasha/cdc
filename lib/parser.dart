@@ -164,6 +164,8 @@ class Parser {
     if (_peek().kind == .semicolon) return _nullStmt();
     if (_peek().kind == .return$) return _returnStmt();
     if (_peek().kind == .if$) return _ifStmt();
+    if (_peek().kind == .goto) return _gotoStmt();
+    if (_peek().kind == .identifier) return _labeledStmtOrExprStmt();
     return _expressionStmt();
   }
 
@@ -199,6 +201,23 @@ class Parser {
 
     return IfStmt(cond, thenStmt, elseStmt);
   } 
+
+  Stmt _gotoStmt() {
+    _consume(.goto, "Expect a `goto` keyword.");
+    final label = _consume(.identifier, "Expect a goto destination label.");
+    _consume(.semicolon, "Expect a ';' after goto label.");
+    return GotoStmt(label);
+  }
+
+  Stmt _labeledStmtOrExprStmt() {
+    final label = _consume(.identifier, "Expect an identifier.");
+    if (_match(.colon)) {
+      return LabeledStmtStmt(label, statement());
+    }
+
+    _retract();
+    return _expressionStmt();
+  }
 
   Map<TokenKind, PrecedenceRule> get _rules => {
     // dart format off
@@ -425,6 +444,10 @@ class Parser {
     _currentIdx++;
     return next;
   }
+
+  void _retract() {
+    _currentIdx--;
+  }
   
   bool _match(TokenKind kind) {
     if (_peek().kind == kind) {
@@ -454,6 +477,7 @@ class Parser {
   }
   
   String _makeTemp(String lexeme) => "r.$lexeme.${_varCount++}";
+  
 }
 
 // class ConstantFolder implements StmtVisitor<Stmt>, ExprVisitor<Expr>, DeclVisitor<Decl>, BlockItemVisitor<BlockItem> {

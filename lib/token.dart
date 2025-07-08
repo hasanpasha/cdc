@@ -48,6 +48,7 @@ enum TokenKind {
   else$,
   questionMark,
   colon,
+  goto,
   eoi,
   error,
 }

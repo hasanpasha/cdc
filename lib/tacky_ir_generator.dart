@@ -260,6 +260,17 @@ class TackyIRGenerator implements
       LabelInstr(endLabel),
     ]);
   }
+  
+  @override
+  List<Instr> visitGotoStmt(GotoStmt gotoStmt) => [
+      JumpInstr(gotoStmt.dest.lexeme),
+    ];
+  
+  @override
+  List<Instr> visitLabeledStmtStmt(LabeledStmtStmt labeledStmtStmt) => [
+    LabelInstr(labeledStmtStmt.label.lexeme),
+    ...labeledStmtStmt.stmt.accept(this),
+  ];
 }
 
 extension on ((Value, List<Instr>), (Value, List<Instr>)) {

@@ -7,7 +7,7 @@ import 'package:test/test.dart';
 // TODO: add tests for parsing and tacky_ir and generated asm
 void main() {
   test('lexer', () {
-    expect("+-*/() 1234 main int void ++--<<>>|&^<><=>====!=!+=-=*=/=%=&=|=^=<<=>>=if else?:".lex().map((tok) => tok.kind), <TokenKind>[
+    expect("+-*/() 1234 main int void ++--<<>>|&^<><=>====!=!+=-=*=/=%=&=|=^=<<=>>=if else?goto:".lex().map((tok) => tok.kind), <TokenKind>[
       .plus,
       .hyphen,
       .asterisk,
@@ -46,6 +46,7 @@ void main() {
       .if$,
       .else$,
       .questionMark,
+      .goto,
       .colon,
       .eoi,
     ]);

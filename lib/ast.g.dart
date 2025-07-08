@@ -55,6 +55,8 @@ abstract class StmtVisitor<R> {
   R visitReturnStmt(ReturnStmt returnStmt);
   R visitExpressionStmt(ExpressionStmt expressionStmt);
   R visitIfStmt(IfStmt ifStmt);
+  R visitGotoStmt(GotoStmt gotoStmt);
+  R visitLabeledStmtStmt(LabeledStmtStmt labeledStmtStmt);
   R visitNullStmt(NullStmt nullStmt);
 }
 
@@ -112,6 +114,42 @@ class IfStmt extends Stmt with EquatableMixin {
   @override
   R accept<R>(StmtVisitor<R> visitor) {
     return visitor.visitIfStmt(this);
+  }
+}
+
+class GotoStmt extends Stmt with EquatableMixin {
+  GotoStmt(this.dest);
+
+  final Token dest;
+
+  @override
+  List<Object?> get props => [dest];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(StmtVisitor<R> visitor) {
+    return visitor.visitGotoStmt(this);
+  }
+}
+
+class LabeledStmtStmt extends Stmt with EquatableMixin {
+  LabeledStmtStmt(this.label, this.stmt);
+
+  final Token label;
+
+  final Stmt stmt;
+
+  @override
+  List<Object?> get props => [label, stmt];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(StmtVisitor<R> visitor) {
+    return visitor.visitLabeledStmtStmt(this);
   }
 }
 
