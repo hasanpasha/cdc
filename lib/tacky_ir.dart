@@ -1,3 +1,5 @@
+import 'package:equatable/equatable.dart';
+
 part 'tacky_ir.g.dart';
 
 class ProgramIR {

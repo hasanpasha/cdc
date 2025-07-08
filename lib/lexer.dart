@@ -33,37 +33,46 @@ class Lexer extends Iterable<Token> {
   
   Token _lexNext() {
     _skipWhitespace();
+    _start = _current;
+    
     if (_isAtEnd) return _token(.eoi);
 
-    _start = _current;
     final char = _advance();
 
-    if (_isAlpha(char)) {
+    if (_isAlpha(char) || char == '_') {
       return _keywordOrIdentifier();
     } else if (_isDigit(char)) {
       return _number();
     } else {
-      return _token(switch (char) {
+      final TokenKind kind = switch (char) {
         '(' => .leftParen,
         ')' => .rightParen,
         '{' => .leftBraces,
         '}' => .rightBraces,
         ';' => .semicolon,
         '~' => .tilde,
-        '-' => _match(char) ? .hyphenHyphen : .hyphen,
-        '+' => _match(char) ? .plusPlus : .plus,
-        '*' => .asterisk,
-        '/' => .forwardSlash,
-        '%' => .percent,
-        '&' => _match(char) ? .andAnd : .and,
-        '|' => _match(char) ? .orOr : .or,
-        '^' => .xor,
-        '<' => _match(char) ? .lessLess : _match('=') ? .lessEqual : .less,
-        '>' => _match(char) ? .greaterGreater : _match('=') ? .greaterEqual : .greater,
+        '-' => _match(char) ? .hyphenHyphen : _match('=') ? .hyphenEqual : .hyphen,
+        '+' => _match(char) ? .plusPlus : _match('=') ? .plusEqual : .plus,
+        '*' => _match('=') ? .starEqual : .asterisk,
+        '/' => _match('=') ? .forwardSlashEqual : .forwardSlash,
+        '%' => _match('=') ? .percentEqual : .percent,
+        '&' => _match(char) ? .andAnd : _match('=') ? .andEqual : .and,
+        '|' => _match(char) ? .orOr : _match('=') ? .orEqual : .or,
+        '^' => _match('=') ? .xorEqual :.xor,
+        '<' => _match(char) ? _match('=') ? .lessLessEqual : .lessLess : _match('=') ? .lessEqual : .less,
+        '>' => _match(char) ? _match('=') ? .greaterGreaterEqual : .greaterGreater : _match('=') ? .greaterEqual : .greater,
         '=' => _match(char) ? .equalEqual : .equal,
         '!' => _match('=') ? .bangEqual : .bang,
-        String() => throw Exception("unknown char: $char."),
-      });
+        '?' => .questionMark,
+        ':' => .colon,
+        String() => .error,
+      };
+
+      if (kind == .error) {
+        return ErrorToken(_currentLexemeLocation(), char, "Unexpect character");
+      }
+
+      return _token(kind);
     }
 
   }
@@ -94,17 +103,17 @@ class Lexer extends Iterable<Token> {
   
   void _skipComments() {
     if (!_isAtEnd && _matchString("//")) {
-      while (!_isAtEnd && _match('\n')) {
+      while (!_isAtEnd && !_match('\n')) {
         _advance();
       }
-      _skipWhitespace();
+      if (!_isAtEnd) _skipWhitespace();
     }
 
     if (!_isAtEnd && _matchString("/*")) {
-      while (!_isAtEnd && _match('*/')) {
+      while (!_isAtEnd && !_matchString('*/')) {
         _advance();
       }
-      _skipWhitespace();
+      if (!_isAtEnd) _skipWhitespace();
     }
   }
   
@@ -112,7 +121,13 @@ class Lexer extends Iterable<Token> {
     if (_isAtEnd) return false;
     final needleLen = needle.length;
     if (_current+needleLen >= _sourceCode.length) return false;
-    return (_sourceCode.substring(_current, _current+needleLen) == needle);
+    if (_sourceCode.substring(_current, _current+needleLen) == needle) {
+      for (int i = 0; i < needleLen; i++) {
+        _advance();
+      }
+      return true;
+    }
+    return false;
   }
   
   bool _match(String needle) {
@@ -140,7 +155,7 @@ class Lexer extends Iterable<Token> {
   }
   
   Token _keywordOrIdentifier() {
-    while (!_isAtEnd && _isAlphaNumeric(_peek())) {
+    while (!_isAtEnd && (_isAlphaNumeric(_peek()) || _peek() == '_')) {
       _advance();
     }
     
@@ -148,6 +163,9 @@ class Lexer extends Iterable<Token> {
       "int" => _token(.int),
       "void" => _token(.void$),
       "return" => _token(.return$),
+      "if" => _token(.if$),
+      "else" => _token(.else$),
+      "goto" => _token(.goto),
       String() => _token(.identifier),
     };
   }
@@ -156,9 +174,14 @@ class Lexer extends Iterable<Token> {
     while (!_isAtEnd && _isDigit(_peek())) {
       _advance();
     }
-    if (_isAlpha(_peek())) {
-      throw Exception("Found alpha characters attached to number.");
+    
+    if (!_isAtEnd && _isAlpha(_peek())) {
+      while (!_isAtEnd && (_isAlphaNumeric(_peek()) || _peek() == '_')) {
+        _advance();
+      }
+      return ErrorToken(_currentLexemeLocation(), _currentLexeme(), "extra text after expected end of number");
     }
+
     return _token(.constant);
   }
 

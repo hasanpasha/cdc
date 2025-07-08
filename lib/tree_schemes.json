@@ -9,13 +9,72 @@
       }
     ],
     "scheme": {
+      "BlockItem": {
+        "Stmt": {
+          "stmt": "Stmt"
+        },
+        "Decl": {
+          "decl": "Decl"
+        }
+      },
       "Stmt": {
-        "Return": {"keyword": "Token", "expr": "Expr"}
+        "Return": {
+          "keyword": "Token",
+          "expr": "Expr"
+        },
+        "Expression": {
+          "expr": "Expr"
+        },
+        "If": {
+          "cond": "Expr",
+          "then": "Stmt",
+          "else$": "Stmt?"
+        },
+        "Goto": {
+          "dest": "Token"
+        },
+        "LabeledStmt": {
+          "label": "Token",
+          "stmt": "Stmt"
+        },
+        "Null": {}
+      },
+      "Decl": {
+        "Variable": {
+          "name": "Token",
+          "init": "Expr?"
+        }
       },
       "Expr": {
-        "Constant": {"value": "String"},
-        "Unary": {"operator": "Token", "operand": "Expr"},
-        "Binary": {"operator": "Token", "lhs": "Expr", "rhs": "Expr"}
+        "Constant": {
+          "value": "Token"
+        },
+        "Var": {
+          "identifier": "Token"
+        },
+        "PrefixUnary": {
+          "operator": "Token",
+          "operand": "Expr"
+        },
+        "PostfixUnary": {
+          "operator": "Token",
+          "operand": "Expr"
+        },
+        "Binary": {
+          "operator": "Token",
+          "lhs": "Expr",
+          "rhs": "Expr"
+        },
+        "Assignment": {
+          "operator": "Token",
+          "lhs": "Expr",
+          "rhs": "Expr"
+        },
+        "Conditional": {
+          "cond": "Expr",
+          "lhs": "Expr",
+          "rhs": "Expr"
+        }
       }
     }
   },

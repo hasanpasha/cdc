@@ -1,5 +1,7 @@
-int main(void)
-{
-    // ^ has lower precedence than <
-    return 5 ^ 7 < 5;
+int main(void) {
+    if (0)
+    label:
+        return 5;
+    goto label;
+    return 0;
 }

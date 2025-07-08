@@ -17,23 +17,26 @@ class Options {
   Uri _inputFile = Uri();
 
   bool get isVerbose => _verbose;
-  var _verbose = false;
+  bool _verbose = false;
 
   bool get onlyLex => _onlyLex;
-  var _onlyLex = false;
+  bool _onlyLex = false;
 
   bool get onlyParse => _onlyParse;
-  var _onlyParse = false;
+  bool _onlyParse = false;
+
+  bool get onlyValidate => _onlyValidtae;
+  bool _onlyValidtae = false;
 
   bool get onlyGenTacky => _onlyGenTacky;
-  var _onlyGenTacky = false;
+  bool _onlyGenTacky = false;
 
   bool get onlyGenASM => _onlyGenASM;
-  var _onlyGenASM = false;
+  bool _onlyGenASM = false;
 
   Future parse(List<String> args) async {
     final optDefStr = """
-    |v,verbose|?,h,help|l,lex|p,parse|t,tacky|c,codegen|
+    |v,verbose|?,h,help|l,lex|p,parse|v,validate|t,tacky|c,codegen|
     :
     """;
 
@@ -60,6 +63,10 @@ class Options {
 
     if (result.isSet("parse")) {
       _onlyParse = true;
+    }
+
+    if (result.isSet("validate")) {
+      _onlyValidtae = true;
     }
 
     if (result.isSet("tacky")) {
@@ -125,6 +132,13 @@ Future main(List<String> arguments) async {
     exit(0);
   }
 
+  final analyzedProgramAst = analyze(programAst);
+
+  if (o.onlyValidate) {
+    _logger.out(analyzedProgramAst.prettyTree());
+    exit(0);
+  }
+
   final programIr = TackyIRGenerator.generate(programAst);
   if (o.isVerbose) {
     _logger.verbose(programIr.toString());
@@ -156,7 +170,6 @@ Future main(List<String> arguments) async {
   // await File(asmOutPath.path).delete();
 }
 
-// TODO: refactor
 extension on Uri {
   Future<String> read() async => await File(path).readAsString();
   Future<List<Token>> readAsTokens() async => Lexer(await read(), path).toList();

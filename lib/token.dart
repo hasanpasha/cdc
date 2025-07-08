@@ -1,3 +1,5 @@
+import 'package:equatable/equatable.dart';
+
 enum TokenKind {
   identifier,
   constant,
@@ -32,7 +34,23 @@ enum TokenKind {
   bangEqual,
   lessEqual,
   greaterEqual,
+  plusEqual,
+  hyphenEqual,
+  starEqual,
+  forwardSlashEqual,
+  percentEqual,
+  andEqual,
+  orEqual,
+  xorEqual,
+  lessLessEqual,
+  greaterGreaterEqual,
+  if$,
+  else$,
+  questionMark,
+  colon,
+  goto,
   eoi,
+  error,
 }
 
 class Location {
@@ -54,13 +72,25 @@ class Location {
   String toString() => "${filename != null ? "${filename!}:" : ''}$line:$column";
 }
 
-class Token {
+class Token extends Equatable {
   final TokenKind kind;
   final String lexeme;
   final Location location;
 
   const Token(this.kind, this.lexeme, this.location);
 
+  Token copyWith({TokenKind? kind, String? lexeme, Location? location}) => 
+    Token(kind ?? this.kind, lexeme ?? this.lexeme, location ?? this.location);
+    
   @override
-  String toString() => "$location: $kind $lexeme";
+  List<Object> get props => [kind, lexeme];
+
+  @override
+  bool get stringify => true;
+}
+
+class ErrorToken extends Token {
+  final String message;
+
+  ErrorToken(Location location, String lexeme, this.message) : super(.error, lexeme, location);
 }
