@@ -1,0 +1,65 @@
+{
+    "name": "tacky_ir",
+    "output": "tacky_ir.g.dart",
+    "directives": [
+        {
+            "kind": "partof",
+            "value": "tacky_ir.dart"
+        }
+    ],
+    "scheme": {
+        "ProgramIR": {
+            "ProgramIR": {
+                "functionDefinition": "FunctionIR"
+            }
+        },
+        "FunctionIR": {
+            "FunctionIR": {
+                "name": "String",
+                "instructions": "List<Instr>"
+            }
+        },
+        "Instr": {
+            "Return": {
+                "value": "Value"
+            },
+            "Unary": {
+                "operator": "UnaryOperator",
+                "src": "Value",
+                "dst": "Value"
+            },
+            "Binary": {
+                "operator": "BinaryOperator",
+                "lhs": "Value",
+                "rhs": "Value",
+                "dst": "Value"
+            },
+            "Copy": {
+                "src": "Value",
+                "dst": "Value"
+            },
+            "Jump": {
+                "target": "String"
+            },
+            "JumpIfZero": {
+                "condition": "Value",
+                "target": "String"
+            },
+            "JumpIfNotZero": {
+                "condition": "Value",
+                "target": "String"
+            },
+            "Label": {
+                "value": "String"
+            }
+        },
+        "Value": {
+            "Constant": {
+                "value": "String"
+            },
+            "Variable": {
+                "name": "String"
+            }
+        }
+    }
+}

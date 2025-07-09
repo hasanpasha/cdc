@@ -1,5 +1,47 @@
 part of 'tacky_ir.dart';
 
+class ProgramIR with EquatableMixin {
+  ProgramIR(this.functionDefinition);
+
+  final FunctionIR functionDefinition;
+
+  @override
+  List<Object?> get props => [functionDefinition];
+
+  @override
+  bool? get stringify => true;
+
+  R accept<R>(ProgramIRVisitor<R> visitor) {
+    return visitor.visitProgramIR(this);
+  }
+}
+
+abstract class ProgramIRVisitor<R> {
+  R visitProgramIR(ProgramIR programIr);
+}
+
+class FunctionIR with EquatableMixin {
+  FunctionIR(this.name, this.instructions);
+
+  final String name;
+
+  final List<Instr> instructions;
+
+  @override
+  List<Object?> get props => [name, instructions];
+
+  @override
+  bool? get stringify => true;
+
+  R accept<R>(FunctionIRVisitor<R> visitor) {
+    return visitor.visitFunctionIR(this);
+  }
+}
+
+abstract class FunctionIRVisitor<R> {
+  R visitFunctionIR(FunctionIR functionIr);
+}
+
 abstract class Instr {
   R accept<R>(InstrVisitor<R> visitor) {
     throw UnimplementedError();

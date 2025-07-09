@@ -69,7 +69,7 @@ class Parser {
   int _varCount = 0;
   final List<(Location, String)> issues = [];
 
-  static ProgramAST parse(List<Token> tokens, { bool constantFold = false }) {
+  static ProgramAst parse(List<Token> tokens, { bool constantFold = false }) {
     final parser = Parser(tokens);
 
     var program = parser.parseProgram();
@@ -87,14 +87,14 @@ class Parser {
 
   Parser(this.tokens);
 
-  ProgramAST parseProgram() {
-    final FunctionAST function = _function();
+  ProgramAst parseProgram() {
+    final FunctionAst function = _function();
     _consume(.eoi, "Expect end of input.");
     
-    return ProgramAST(function: function);
+    return ProgramAst(function);
   }
   
-  FunctionAST _function() {
+  FunctionAst _function() {
     _consume(.int, "Expect `int` at start of function.");
     final name = _consume(.identifier, "Expect identifier name for function definition.");
     _consume(.leftParen, "Expect a '(' at start of parameters list.");
@@ -126,7 +126,7 @@ class Parser {
 
     _consume(.rightBraces, "Expect '}' closing a function body.");
 
-    return FunctionAST(name: name, body: body);
+    return FunctionAst(name, Block(body));
   }
 
   BlockItem blockItem() {
@@ -481,11 +481,11 @@ class Parser {
 }
 
 // class ConstantFolder implements StmtVisitor<Stmt>, ExprVisitor<Expr>, DeclVisitor<Decl>, BlockItemVisitor<BlockItem> {
-//   static ProgramAST transform(ProgramAST program) => ConstantFolder().visitProgram(program);
+//   static ProgramAst transform(ProgramAst program) => ConstantFolder().visitProgram(program);
   
-//   ProgramAST visitProgram(ProgramAST program) => ProgramAST(function: visitFunction(program.function));
+//   ProgramAst visitProgram(ProgramAst program) => ProgramAst(function: visitFunction(program.function));
   
-//   visitFunction(FunctionAST function) => FunctionAST(
+//   visitFunction(FunctionAst function) => FunctionAst(
 //     name: function.name, 
 //     body: function.body.map((item) => item.accept(this)).toList()
 //   );

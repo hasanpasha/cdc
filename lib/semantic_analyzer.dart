@@ -1,8 +1,8 @@
 
 import 'package:cdc/cdc.dart';
 
-ProgramAST analyze(ProgramAST programAst) {
-  ProgramAST newProgram;
+ProgramAst analyze(ProgramAst programAst) {
+  ProgramAst newProgram;
 
   newProgram = LabelsResolver.transform(programAst);
 
@@ -11,31 +11,37 @@ ProgramAST analyze(ProgramAST programAst) {
 
 enum LabelsResolverStage { labeledStmt, goto }
 
-class LabelsResolver implements BlockItemVisitor<BlockItem>, StmtVisitor<Stmt> {
+class LabelsResolver implements ProgramAstVisitor<(List<(Location, String)>, ProgramAst)>, FunctionAstVisitor<FunctionAst>, BlockVisitor<Block>, BlockItemVisitor<BlockItem>, StmtVisitor<Stmt> {
   final Map<String, String> labels = {};
   LabelsResolverStage _stage = .labeledStmt;
   final List<(Location, String)> _issues = [];
   int _counter = 0;
   
 
-  static ProgramAST transform(ProgramAST program) {
-    final (issues, newProgram) = LabelsResolver().visitProgram(program);
+  static ProgramAst transform(ProgramAst program) {
+    final (issues, newProgram) = program.accept(LabelsResolver());
     if (issues.isNotEmpty) {
       throw MultiIssues(issues);
     }
     return newProgram;
-  } 
-
-  (List<(Location, String)>, ProgramAST) visitProgram(ProgramAST program) => (_issues, ProgramAST(function: visitFunction(program.function)));
-
-  FunctionAST visitFunction(FunctionAST function) {
-    _stage = .labeledStmt;
-    List<BlockItem> newBody = function.body.map((instr) => instr.accept(this)).toList();
-    _stage = .goto;
-    newBody = newBody.map((instr) => instr.accept(this)).toList();
-
-    return FunctionAST(name: function.name, body: newBody);
   }
+
+  @override
+  (List<(Location, String)>, ProgramAst) visitProgramAst(ProgramAst program) => 
+    (_issues, ProgramAst(program.main.accept(this)));
+
+  @override
+  FunctionAst visitFunctionAst(FunctionAst function) {
+    _stage = .labeledStmt;
+    Block newBody = function.body.accept(this);
+    _stage = .goto;
+    newBody = newBody.accept(this);
+
+    return FunctionAst(function.name, newBody);
+  }
+
+  @override
+  Block visitBlock(Block block) => Block(block.items.map((item) => item.accept(this)).toList());
 
   @override
   BlockItem visitDeclBlockItem(DeclBlockItem declBlockItem) => declBlockItem;

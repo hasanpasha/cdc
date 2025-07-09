@@ -4,6 +4,9 @@ import 'package:cdc/tacky_ir.dart';
 import 'package:cdc/token.dart';
 
 class TackyIRGenerator implements 
+  ProgramAstVisitor<ProgramIR>,
+  FunctionAstVisitor<FunctionIR>,
+  BlockVisitor<List<Instr>>,
   StmtVisitor<List<Instr>>, 
   ExprVisitor<(Value, List<Instr>)>,
   DeclVisitor<List<Instr>>,
@@ -15,20 +18,26 @@ class TackyIRGenerator implements
 
   TackyIRGenerator();
 
-  static ProgramIR generate(ProgramAST program) => 
-    TackyIRGenerator().visitProgram(program);
+  static ProgramIR generate(ProgramAst program) => 
+    program.accept(TackyIRGenerator());
   
-  ProgramIR visitProgram(ProgramAST program) {
-    final functionDefinition = visitFuction(program.function);
+  @override
+  ProgramIR visitProgramAst(ProgramAst program) {
+    final functionDefinition = program.main.accept(this);
     
     return ProgramIR(functionDefinition);
   }
 
-  FunctionIR visitFuction(FunctionAST function) => FunctionIR(
+  @override
+  FunctionIR visitFunctionAst(FunctionAst function) => FunctionIR(
       function.name.lexeme,
-      function.body.map((instr) => instr.accept(this)).expand((e) => e).toList()
+      function.body.accept(this)
         ..add(ReturnInstr(ConstantValue('0')))
     );
+
+  @override
+  List<Instr> visitBlock(Block block) => 
+    block.items.map((item) => item.accept(this)).expand((e) => e).toList();
 
   @override
   List<Instr> visitReturnStmt(ReturnStmt ret) => 

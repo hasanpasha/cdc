@@ -1,5 +1,67 @@
 part of 'ast.dart';
 
+class ProgramAst with EquatableMixin {
+  ProgramAst(this.main);
+
+  final FunctionAst main;
+
+  @override
+  List<Object?> get props => [main];
+
+  @override
+  bool? get stringify => true;
+
+  R accept<R>(ProgramAstVisitor<R> visitor) {
+    return visitor.visitProgramAst(this);
+  }
+}
+
+abstract class ProgramAstVisitor<R> {
+  R visitProgramAst(ProgramAst programAst);
+}
+
+class FunctionAst with EquatableMixin {
+  FunctionAst(this.name, this.body);
+
+  final Token name;
+
+  final Block body;
+
+  @override
+  List<Object?> get props => [name, body];
+
+  @override
+  bool? get stringify => true;
+
+  R accept<R>(FunctionAstVisitor<R> visitor) {
+    return visitor.visitFunctionAst(this);
+  }
+}
+
+abstract class FunctionAstVisitor<R> {
+  R visitFunctionAst(FunctionAst functionAst);
+}
+
+class Block with EquatableMixin {
+  Block(this.items);
+
+  final List<BlockItem> items;
+
+  @override
+  List<Object?> get props => [items];
+
+  @override
+  bool? get stringify => true;
+
+  R accept<R>(BlockVisitor<R> visitor) {
+    return visitor.visitBlock(this);
+  }
+}
+
+abstract class BlockVisitor<R> {
+  R visitBlock(Block block);
+}
+
 abstract class BlockItem {
   R accept<R>(BlockItemVisitor<R> visitor) {
     throw UnimplementedError();

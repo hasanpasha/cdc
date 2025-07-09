@@ -1,8 +1,7 @@
 import 'package:cdc/cdc.dart';
-import 'package:test/scaffolding.dart';
 import 'package:test/test.dart';
 
-ProgramAST parse(String code) => Parser.parse(code.lex());
+ProgramAst parse(String code) => Parser.parse(code.lex());
 
 Token _dumpToken(TokenKind kind, String lexeme) {
   return Token(kind, lexeme, Location(1, 1));
@@ -134,9 +133,9 @@ void main() {
         int main(void) {
             return 0;
         }
-        """), ProgramAST(function: FunctionAST(name: _dumpToken(.identifier, 'main'), body: [
+        """), ProgramAst(FunctionAst(_dumpToken(.identifier, 'main'), Block([
           StmtBlockItem(ReturnStmt(_dumpToken(.return$, 'return'), ConstantExpr(_dumpToken(.constant, '0'))))
-        ])));
+        ]))));
       });
 
       test('return 2', () {
@@ -144,9 +143,9 @@ void main() {
         int main(void) {
             return 2;
         }
-        """), ProgramAST(function: FunctionAST(name: _dumpToken(.identifier, 'main'), body: [
+        """), ProgramAst(FunctionAst(_dumpToken(.identifier, 'main'), Block([
           StmtBlockItem(ReturnStmt(_dumpToken(.return$, 'return'), ConstantExpr(_dumpToken(.constant, '2'))))
-        ])));
+        ]))));
       });
 
     });
@@ -224,10 +223,10 @@ void main() {
             // construct it b/c the constant 2147483648 is out of bounds)
             return ~-2147483647;
         }
-        """), ProgramAST(function: FunctionAST(name: _dumpToken(.identifier, 'main'), body: [
+        """), ProgramAst(FunctionAst(_dumpToken(.identifier, 'main'), Block([
           StmtBlockItem(ReturnStmt(_dumpToken(.return$, 'return'), PrefixUnaryExpr(_dumpToken(.tilde, '~'), 
             PrefixUnaryExpr(_dumpToken(.hyphen, '-'), ConstantExpr(_dumpToken(.constant, '2147483647'))))))
-        ])));
+        ]))));
       });
 
     });
