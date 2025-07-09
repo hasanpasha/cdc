@@ -128,14 +128,14 @@ Future main(List<String> arguments) async {
     _logger.verbose(programAst.toString());
   }
   if (o.onlyParse) {
-    _logger.out(programAst.prettyTree());
+    _logger.out(programAst.accept(ASTPrettier()));
     exit(0);
   }
 
   final analyzedProgramAst = analyze(programAst);
 
   if (o.onlyValidate) {
-    _logger.out(analyzedProgramAst.prettyTree());
+    _logger.out(analyzedProgramAst.accept(ASTPrettier()));
     exit(0);
   }
 
