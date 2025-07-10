@@ -3,13 +3,13 @@ import 'package:cdc/cdc.dart';
 
 import 'x86_64_asm.dart';
 
-class X8664Generator implements AsmGenerator, InstrVisitor<void>, ValueVisitor<X8664Operand> {
+class X8664Generator implements AsmGenerator, ProgramIRVisitor<X8664ProgramASM>, FunctionIRVisitor<X8664FunctionAsm>, InstrVisitor<void>, ValueVisitor<X8664Operand> {
   List<X8664Instr> _instrs = [];
   
 // TODO: refactor
   @override
   ProgramASM generate(ProgramIR program) {
-    var asmProgram = visitProgram(program);
+    var asmProgram = program.accept(this);
 
     asmProgram = PseudoEliminator.transform(asmProgram);
     asmProgram = InstructionsFixer.transform(asmProgram);
@@ -19,11 +19,13 @@ class X8664Generator implements AsmGenerator, InstrVisitor<void>, ValueVisitor<X
 
   }
 
-  X8664ProgramASM visitProgram(ProgramIR program) {
-    return X8664ProgramASM(visitFunction(program.functionDefinition));
+  @override
+  X8664ProgramASM visitProgramIR(ProgramIR program) {
+    return X8664ProgramASM(program.functionDefinition.accept(this));
   }
 
-  X8664FunctionAsm visitFunction(FunctionIR function) {
+  @override
+  X8664FunctionAsm visitFunctionIR(FunctionIR function) {
     final current = _instrs;
 
     try {
