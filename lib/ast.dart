@@ -44,7 +44,7 @@ class ASTPrettier
 
   @override
   String visitBlock(Block block) => _withIndent(
-    () => block.items.map((item) => item.accept(this)).join(",$_indent"),
+    () => block.items.map((item) => item.accept(this)).join(","),
   );
 
   @override
@@ -128,6 +128,10 @@ class ASTPrettier
     () =>
         "LabeledStmt($_indent${labeledStmtStmt.label.lexeme},$_indent${labeledStmtStmt.stmt.accept(this)}$_indentLast)",
   );
+  
+  @override
+  String visitCompoundStmt(CompoundStmt compoundStmt) =>
+      _withIndent(() => "Compound(${compoundStmt.block.accept(this)})");
 }
 
 class ExprPolishNotation implements ExprVisitor<String> {

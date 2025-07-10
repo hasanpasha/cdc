@@ -182,7 +182,6 @@ Future main(List<String> arguments) async {
   } on Exception {
     rethrow;
   } finally {
-    print(o.preserveAsm);
     if (!o.preserveAsm && await File(asmOutPath.path).exists()) {
       await File(asmOutPath.path).delete();
     }

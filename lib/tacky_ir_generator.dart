@@ -280,6 +280,10 @@ class TackyIRGenerator implements
     LabelInstr(labeledStmtStmt.label.lexeme),
     ...labeledStmtStmt.stmt.accept(this),
   ];
+  
+  @override
+  List<Instr> visitCompoundStmt(CompoundStmt compoundStmt) => 
+    compoundStmt.block.accept(this);
 }
 
 extension on ((Value, List<Instr>), (Value, List<Instr>)) {

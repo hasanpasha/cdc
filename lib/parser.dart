@@ -61,11 +61,40 @@ class LexerError extends SyntaxError {
   LexerError(this.errors): super(errors.first, "lexer error");
 }
 
+class Environment {
+  final Map<String, String> symbols = {};
+  final Environment? enclosing;
+
+  Environment([this.enclosing]);
+  
+  bool isDefined(String identifier) {
+    if (isDefinedInCurScope(identifier)) return true;
+    return enclosing?.isDefined(identifier) ?? false;
+  }
+
+  bool isDefinedInCurScope(String identifier) => symbols.containsKey(identifier);
+  
+  String get(String identifier) {
+    if (!isDefined(identifier)) {
+      throw Exception("`$identifier` has not been defined.");
+    }
+    return symbols[identifier] ?? enclosing!.get(identifier);
+  }
+  
+  void define(String identifier, String uniqueName) {
+    if (symbols.containsKey(identifier)) {
+      throw Exception("`$identifier` is already defined in the current scope.");
+    }
+    symbols[identifier] = uniqueName;
+  }
+}
+
+
 class Parser {
   final List<Token> tokens;
   int _currentIdx = 0;
 
-  final Map<String, String> symbols = {};
+  Environment environment = Environment();
   int _varCount = 0;
   final List<(Location, String)> issues = [];
 
@@ -100,11 +129,17 @@ class Parser {
     _consume(.leftParen, "Expect a '(' at start of parameters list.");
     _consume(.void$, "Expect `void` as argument.");
     _consume(.rightParen, "Expect ')' closing parameters list.");
-    
-    _consume(.leftBraces, "Expect '{' opening a function body.");
+    Block body = _block();
+
+    return FunctionAst(name, body);
+  }
+
+  Block _block() {
+    final blockToken = _consume(.leftBraces, "Expect '{' opening a function body.");
     
     bool hadError = false;
     final List<BlockItem> body = [];
+    environment = Environment(environment);
     while (!_isAtEnd && _peek().kind != .rightBraces) {
       try {
         body.add(blockItem());
@@ -119,14 +154,15 @@ class Parser {
         print(e);
         _synchronize();
       }
-    }
+    } 
+    environment = environment.enclosing!;
     if (hadError) {
-      throw SyntaxError(name, "error while parsing function body.");
+      throw SyntaxError(blockToken, "error while parsing a block.");
     }
-
-    _consume(.rightBraces, "Expect '}' closing a function body.");
-
-    return FunctionAst(name, Block(body));
+    
+    _consume(.rightBraces, "Expect '}' closing a block.");
+    
+    return Block(body);
   }
 
   BlockItem blockItem() {
@@ -143,12 +179,12 @@ class Parser {
     Token name = _consume(.identifier, "Expect a variable identifier.");
 
     late final String uniqueName;
-    if (symbols.containsKey(name.lexeme)) {
+    if (environment.isDefinedInCurScope(name.lexeme)) {
       issues.add((name.location, "Duplicate variable declaration."));
-      uniqueName = symbols[name.lexeme]!;
+      uniqueName = environment.get(name.lexeme);
     } else {
       uniqueName = _makeTemp(name.lexeme);
-      symbols[name.lexeme] = uniqueName;
+      environment.define(name.lexeme, uniqueName);
     }
     
     Expr? init;
@@ -166,6 +202,7 @@ class Parser {
     if (_peek().kind == .if$) return _ifStmt();
     if (_peek().kind == .goto) return _gotoStmt();
     if (_peek().kind == .identifier) return _labeledStmtOrExprStmt();
+    if (_peek().kind == .leftBraces) return _compoundStmt();
     return _expressionStmt();
   }
 
@@ -218,6 +255,9 @@ class Parser {
     _retract();
     return _expressionStmt();
   }
+
+  Stmt _compoundStmt() => 
+    CompoundStmt(_block());
 
   Map<TokenKind, PrecedenceRule> get _rules => {
     // dart format off
@@ -364,11 +404,11 @@ class Parser {
   VarExpr _var() {
     final identifier = _consume(.identifier, "Expect an identifier.");
 
-    if (!symbols.containsKey(identifier.lexeme)) {
+    if (!environment.isDefined(identifier.lexeme)) {
       issues.add((identifier.location, "undeclared variable '${identifier.lexeme}'"));
     }
 
-    return VarExpr(identifier.copyWith(lexeme: symbols[identifier.lexeme]));
+    return VarExpr(identifier.copyWith(lexeme: environment.get(identifier.lexeme)));
   }
 
   Expr _assignment(Expr left) {

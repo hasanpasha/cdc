@@ -119,6 +119,7 @@ abstract class StmtVisitor<R> {
   R visitIfStmt(IfStmt ifStmt);
   R visitGotoStmt(GotoStmt gotoStmt);
   R visitLabeledStmtStmt(LabeledStmtStmt labeledStmtStmt);
+  R visitCompoundStmt(CompoundStmt compoundStmt);
   R visitNullStmt(NullStmt nullStmt);
 }
 
@@ -212,6 +213,23 @@ class LabeledStmtStmt extends Stmt with EquatableMixin {
   @override
   R accept<R>(StmtVisitor<R> visitor) {
     return visitor.visitLabeledStmtStmt(this);
+  }
+}
+
+class CompoundStmt extends Stmt with EquatableMixin {
+  CompoundStmt(this.block);
+
+  final Block block;
+
+  @override
+  List<Object?> get props => [block];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(StmtVisitor<R> visitor) {
+    return visitor.visitCompoundStmt(this);
   }
 }
 

@@ -52,6 +52,9 @@
                 "label": "Token",
                 "stmt": "Stmt"
             },
+            "Compound": {
+                "block": "Block"
+            },
             "Null": {}
         },
         "Decl": {

@@ -94,4 +94,8 @@ class LabelsResolver implements ProgramAstVisitor<(List<(Location, String)>, Pro
     StmtBlockItem(stmtBlockItem.stmt.accept(this));
     
   String _makeLabel(String lexeme) => ".L$lexeme${_counter++}";
+  
+  @override
+  Stmt visitCompoundStmt(CompoundStmt compoundStmt) => 
+    CompoundStmt(compoundStmt.block.accept(this));
 }
