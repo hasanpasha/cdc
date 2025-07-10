@@ -8,6 +8,12 @@
         }
     ],
     "scheme": {
+      "X8664FunctionAsm": {
+        "X8664FunctionAsm": {
+          "name": "String",
+          "instrs": "List<X8664Instr>"
+        }
+      },
       "X8664Instr": {
         "Move": {
           "src": "X8664Operand",

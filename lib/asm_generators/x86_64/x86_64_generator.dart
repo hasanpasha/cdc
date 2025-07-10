@@ -23,7 +23,7 @@ class X8664Generator implements AsmGenerator, InstrVisitor<void>, ValueVisitor<X
     return X8664ProgramASM(visitFunction(program.functionDefinition));
   }
 
-  X8664FunctionASM visitFunction(FunctionIR function) {
+  X8664FunctionAsm visitFunction(FunctionIR function) {
     final current = _instrs;
 
     try {
@@ -34,7 +34,7 @@ class X8664Generator implements AsmGenerator, InstrVisitor<void>, ValueVisitor<X
         instr.accept(this);
       }
       
-      return X8664FunctionASM(function.name, newInstrs);
+      return X8664FunctionAsm(function.name, newInstrs);
     } finally {
       _instrs = current;
     }
@@ -167,11 +167,11 @@ class X8664Generator implements AsmGenerator, InstrVisitor<void>, ValueVisitor<X
 class InstructionsFixer implements X8664InstrVisitor<List<X8664Instr>> {
   static X8664ProgramASM transform(X8664ProgramASM asmProgram) => InstructionsFixer().visitProgram(asmProgram);
   
-  X8664ProgramASM visitProgram(X8664ProgramASM asmProgram) => X8664ProgramASM(visitFunction(asmProgram.function));
+  X8664ProgramASM visitProgram(X8664ProgramASM asmProgram) => X8664ProgramASM(visitFunction(asmProgram.mainFunction));
   
-  X8664FunctionASM visitFunction(X8664FunctionASM function) {
+  X8664FunctionAsm visitFunction(X8664FunctionAsm function) {
     final newInstrs = function.instrs.map((instr) => instr.accept(this)).expand((instrs) => instrs).toList();
-    return X8664FunctionASM(function.name, newInstrs);
+    return X8664FunctionAsm(function.name, newInstrs);
   }
   
   @override
@@ -277,13 +277,13 @@ class PseudoEliminator implements X8664InstrVisitor<X8664Instr>, X8664OperandVis
   static X8664ProgramASM transform(X8664ProgramASM asmProgram) => PseudoEliminator().visitProgram(asmProgram);
   
   X8664ProgramASM visitProgram(X8664ProgramASM asmProgram) =>
-    X8664ProgramASM(visitFunction(asmProgram.function));
+    X8664ProgramASM(visitFunction(asmProgram.mainFunction));
   
   
-  X8664FunctionASM visitFunction(X8664FunctionASM function) {
+  X8664FunctionAsm visitFunction(X8664FunctionAsm function) {
     final newInstrs = function.instrs.map((instr) => instr.accept(this)).toList()
       ..insert(0, AllocateStackX8664Instr(_stackOffset));
-    return X8664FunctionASM(function.name, newInstrs);
+    return X8664FunctionAsm(function.name, newInstrs);
   }
   
   @override
