@@ -33,10 +33,13 @@ class Options {
 
   bool get onlyGenASM => _onlyGenASM;
   bool _onlyGenASM = false;
+  
+  bool get preserveAsm => _preserveAsm;
+  bool _preserveAsm = false;
 
   Future parse(List<String> args) async {
     final optDefStr = """
-    |v,verbose|?,h,help|l,lex|p,parse|v,validate|t,tacky|c,codegen|
+    |verbose|?,h,help|l,lex|p,parse|v,validate|t,tacky|c,codegen|preserve_asm|
     :
     """;
 
@@ -76,6 +79,10 @@ class Options {
     if (result.isSet("codegen")) {
       _onlyGenASM = true;
     }
+
+    if (result.isSet("preserve_asm")) {
+      _preserveAsm = true;
+    }
   }
 
   Never usage([String? error]) => throw Exception("""
@@ -86,7 +93,13 @@ USAGE:
 ${Options.appName} [OPTIONS]
 
 -?, -h, -[-]help                - this help screen
--v, -[-]verbose                 - detailed log
+-[-]verbose                     - detailed log
+-l, -[-]lex                     - only Lex
+-p, -[-]parse                   - only parse
+-v, -[-]validate                - only validate
+-t, -[-]tacky                   - only generate tacky
+-c, -[-]codegen                 - only generate asm without outputing file
+-[-]preserve_asm                - preserve the generated assembly file
 
 ${(error == null) || error.isEmpty ? '' : "*** ERROR: $error"}
 """);
@@ -148,7 +161,6 @@ Future main(List<String> arguments) async {
     exit(0);
   }
 
-  
   final programAsm = programIr.generateAsm(.x86_64);
   if (o.isVerbose) { 
     _logger.verbose(programAsm.toString());
@@ -159,15 +171,23 @@ Future main(List<String> arguments) async {
   }
 
   final asmOutPath = o.inputFile.replaceExtension('.s');
-  await File(asmOutPath.path).writeAsString(programAsm.emit(), flush: true);
-
-  final binPath = o.inputFile.replaceExtension('');
-  if ((exitCode = await command(gccPath, [asmOutPath.path, '-o', binPath.path])) != 0) {
-    _logger.error("failed compiling file $asmOutPath: $exitCode");
-    exit(exitCode);
+  try {
+    await File(asmOutPath.path).writeAsString(programAsm.emit(), flush: true);
+    
+    final binPath = o.inputFile.replaceExtension('');
+    if ((exitCode = await command(gccPath, [asmOutPath.path, '-o', binPath.path])) != 0) {
+      _logger.error("failed compiling file $asmOutPath: $exitCode");
+      exit(exitCode);
+    }
+  } on Exception {
+    rethrow;
+  } finally {
+    print(o.preserveAsm);
+    if (!o.preserveAsm && await File(asmOutPath.path).exists()) {
+      await File(asmOutPath.path).delete();
+    }
   }
-  // TODO: add option to only output asm file
-  // await File(asmOutPath.path).delete();
+
 }
 
 extension on Uri {
