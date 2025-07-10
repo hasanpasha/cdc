@@ -152,11 +152,12 @@ Future main(List<String> arguments) async {
     exit(0);
   }
 
-  final programIr = TackyIRGenerator.generate(programAst);
+  final programIr = TackyIRGenerator.generate(analyzedProgramAst);
   if (o.isVerbose) {
     _logger.verbose(programIr.toString());
   }
   if (o.onlyGenTacky) {
+    _logger.out(programIr.accept(TackyIrInspector()));
     _logger.out(programIr.toString());
     exit(0);
   }

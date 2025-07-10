@@ -1,4 +1,3 @@
-
 import 'package:cdc/cdc.dart';
 
 abstract class AsmGenerator {

@@ -1,16 +1,16 @@
 int main(void) {
     int x = 10;
-    if (0)
+    int y = 0;
+    int z = 0;
+    do
     {
-    label:
-    {
-        int x = 5;
-        {
-            int y = x + 10;
-            return y;
-        }
-    }
-    }
-    goto label;
-    return 0;
+        z = z + 1;
+        if (x <= 0)
+            continue;
+        x = x - 1;
+        if (y >= 10)
+            continue;
+        y = y + 1;
+    } while (z != 50);
+    return z == 50 && x == 0 && y == 10;
 }

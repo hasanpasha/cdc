@@ -10,6 +10,7 @@ class ASTPrettier
         FunctionAstVisitor<String>,
         BlockVisitor<String>,
         StmtVisitor<String>,
+        ForInitVisitor<String>,
         ExprVisitor<String>,
         DeclVisitor<String>,
         BlockItemVisitor<String> {
@@ -18,8 +19,10 @@ class ASTPrettier
 
   ASTPrettier({this.showLines = true});
 
-  String get _indent => '\n${'  ${showLines ? '|' : ''}'*(level-1) + ((level > 0) ? '  ' : '')}';
-  String get _indentLast => '\n${'  ${showLines ? '|' : ''}'*(level-2) + ((level-1 > 0) ? '  ' : '')}';
+  String get _indent =>
+      '\n${'  ${showLines ? '|' : ''}' * (level - 1) + ((level > 0) ? '  ' : '')}';
+  String get _indentLast =>
+      '\n${'  ${showLines ? '|' : ''}' * (level - 2) + ((level - 1 > 0) ? '  ' : '')}';
 
   String _withIndent(String Function() fn) {
     _push();
@@ -27,14 +30,14 @@ class ASTPrettier
     _pop();
     return str;
   }
-  
+
   void _push() => level++;
   void _pop() => level--;
 
   @override
   String visitProgramAst(ProgramAst program) => _withIndent(
     () => "ProgramAST($_indent${program.main.accept(this)}$_indentLast)",
-  ); 
+  );
 
   @override
   String visitFunctionAst(FunctionAst function) => _withIndent(
@@ -43,19 +46,19 @@ class ASTPrettier
   );
 
   @override
-  String visitBlock(Block block) => _withIndent(
-    () => block.items.map((item) => item.accept(this)).join(","),
-  );
+  String visitBlock(Block block) =>
+      _withIndent(() => block.items.map((item) => item.accept(this)).join(","));
 
   @override
-  String visitReturnStmt(ReturnStmt ret) => _withIndent(() => "Return($_indent${ret.expr.accept(this)}$_indentLast)");
-  
+  String visitReturnStmt(ReturnStmt ret) =>
+      _withIndent(() => "Return($_indent${ret.expr.accept(this)}$_indentLast)");
+
   @override
   String visitBinaryExpr(BinaryExpr binary) => _withIndent(
     () =>
         "Binary($_indent${binary.operator.kind.name},$_indent${binary.lhs.accept(this)},"
         "$_indent${binary.rhs.accept(this)}$_indentLast)",
-  ); 
+  );
 
   @override
   String visitPrefixUnaryExpr(PrefixUnaryExpr unary) => _withIndent(
@@ -68,11 +71,11 @@ class ASTPrettier
     () =>
         "PostfixUnary($_indent${unary.operator.kind.name},$_indent${unary.operand.accept(this)}$_indentLast)",
   );
-  
+
   @override
   String visitConstantExpr(ConstantExpr constant) =>
       _withIndent(() => "Constant(${constant.value.lexeme})");
-  
+
   @override
   String visitAssignmentExpr(AssignmentExpr assignmentExpr) => _withIndent(
     () =>
@@ -106,19 +109,19 @@ class ASTPrettier
   String visitStmtBlockItem(StmtBlockItem stmtBlockItem) => _withIndent(
     () => "Stmt($_indent${stmtBlockItem.stmt.accept(this)}$_indentLast)",
   );
-  
+
   @override
   String visitIfStmt(IfStmt ifStmt) => _withIndent(
     () =>
         "If($_indent${ifStmt.cond.accept(this)},$_indent${ifStmt.then.accept(this)},$_indent${ifStmt.else$?.accept(this)}$_indentLast)",
   );
-  
+
   @override
   String visitConditionalExpr(ConditionalExpr conditionalExpr) => _withIndent(
     () =>
         "Conditional($_indent${conditionalExpr.cond.accept(this)},$_indent${conditionalExpr.lhs.accept(this)},$_indent${conditionalExpr.rhs.accept(this)}$_indentLast)",
   );
-  
+
   @override
   String visitGotoStmt(GotoStmt gotoStmt) =>
       _withIndent(() => "GotoStmt(${gotoStmt.dest.lexeme})");
@@ -128,10 +131,44 @@ class ASTPrettier
     () =>
         "LabeledStmt($_indent${labeledStmtStmt.label.lexeme},$_indent${labeledStmtStmt.stmt.accept(this)}$_indentLast)",
   );
-  
+
   @override
   String visitCompoundStmt(CompoundStmt compoundStmt) =>
       _withIndent(() => "Compound(${compoundStmt.block.accept(this)})");
+
+  @override
+  String visitBreakStmt(BreakStmt breakStmt) => "Break(${breakStmt.label})";
+
+  @override
+  String visitContinueStmt(ContinueStmt continueStmt) =>
+      "Continue(${continueStmt.label})";
+
+  @override
+  String visitDoWhileStmt(DoWhileStmt doWhileStmt) => _withIndent(
+    () =>
+        "DoWhile($_indent${doWhileStmt.body.accept(this)},$_indent${doWhileStmt.cond.accept(this)},$_indent${doWhileStmt.label}$_indentLast)",
+  );
+
+  @override
+  String visitForStmt(ForStmt forStmt) => _withIndent(
+    () =>
+        "For($_indent${forStmt.init.accept(this)},$_indent${forStmt.cond?.accept(this)},"
+        "$_indent${forStmt.post?.accept(this)},$_indent${forStmt.body.accept(this)},$_indent${forStmt.label}$_indentLast)",
+  );
+
+  @override
+  String visitWhileStmt(WhileStmt whileStmt) => _withIndent(
+    () =>
+        "While($_indent${whileStmt.cond.accept(this)},$_indent${whileStmt.body.accept(this)},$_indent${whileStmt.label}$_indentLast)",
+  );
+
+  @override
+  String visitInitDeclForInit(InitDeclForInit initDeclForInit) =>
+      _withIndent(() => "InitDecl(${initDeclForInit.decl.accept(this)})");
+
+  @override
+  String visitInitExpForInit(InitExpForInit initExpForInit) =>
+      _withIndent(() => "InitExp(${initExpForInit.expr?.accept(this)})");
 }
 
 class ExprPolishNotation implements ExprVisitor<String> {
@@ -151,14 +188,14 @@ class ExprPolishNotation implements ExprVisitor<String> {
   @override
   String visitConstantExpr(ConstantExpr constantExpr) =>
       constantExpr.value.lexeme;
-  
+
   @override
   String visitAssignmentExpr(AssignmentExpr assignmentExpr) =>
       "= ${assignmentExpr.lhs.accept(this)}, ${assignmentExpr.rhs.accept(this)}";
 
   @override
   String visitVarExpr(VarExpr varExpr) => varExpr.identifier.lexeme;
-  
+
   @override
   String visitConditionalExpr(ConditionalExpr conditionalExpr) =>
       "?: ${conditionalExpr.cond.accept(this)} ${conditionalExpr.lhs.accept(this)} ${conditionalExpr.rhs.accept(this)}";

@@ -4,31 +4,45 @@ import 'package:cdc/cdc.dart';
 ProgramAst analyze(ProgramAst programAst) {
   ProgramAst newProgram;
 
-  newProgram = LabelsResolver.transform(programAst);
+  int counter = 0;
+  (counter, newProgram) = LabelsResolver.transform(programAst, counter);
+  (counter, newProgram) = LoopLabeling.transform(programAst, counter);
 
   return newProgram;
 }
 
+typedef Issues = List<(Location, String)>;
+
 enum LabelsResolverStage { labeledStmt, goto }
 
-class LabelsResolver implements ProgramAstVisitor<(List<(Location, String)>, ProgramAst)>, FunctionAstVisitor<FunctionAst>, BlockVisitor<Block>, BlockItemVisitor<BlockItem>, StmtVisitor<Stmt> {
+class LabelsResolver implements 
+  ProgramAstVisitor<(Issues, (int, ProgramAst))>,
+  FunctionAstVisitor<FunctionAst>,
+  BlockVisitor<Block>,
+  BlockItemVisitor<BlockItem>,
+  StmtVisitor<Stmt>,
+  ForInitVisitor<ForInit>
+{
   final Map<String, String> labels = {};
   LabelsResolverStage _stage = .labeledStmt;
-  final List<(Location, String)> _issues = [];
+  final Issues _issues = [];
   int _counter = 0;
   
+  LabelsResolver(int counter): _counter = counter;
 
-  static ProgramAst transform(ProgramAst program) {
-    final (issues, newProgram) = program.accept(LabelsResolver());
+  static (int, ProgramAst) transform(ProgramAst program, int counter) {
+    final (issues, (result)) = program.accept(LabelsResolver(counter));
     if (issues.isNotEmpty) {
       throw MultiIssues(issues);
     }
-    return newProgram;
+    return result;
   }
 
+  String _makeLabel(String lexeme) => "$lexeme${_counter++}";
+
   @override
-  (List<(Location, String)>, ProgramAst) visitProgramAst(ProgramAst program) => 
-    (_issues, ProgramAst(program.main.accept(this)));
+  (Issues, (int, ProgramAst)) visitProgramAst(ProgramAst program) => 
+    (_issues, (_counter, ProgramAst(program.main.accept(this))));
 
   @override
   FunctionAst visitFunctionAst(FunctionAst function) {
@@ -93,9 +107,171 @@ class LabelsResolver implements ProgramAstVisitor<(List<(Location, String)>, Pro
   BlockItem visitStmtBlockItem(StmtBlockItem stmtBlockItem) => 
     StmtBlockItem(stmtBlockItem.stmt.accept(this));
     
-  String _makeLabel(String lexeme) => ".L$lexeme${_counter++}";
+  @override
+  Stmt visitCompoundStmt(CompoundStmt compoundStmt) => 
+    CompoundStmt(compoundStmt.block.accept(this));
+    
+  @override
+  Stmt visitBreakStmt(BreakStmt breakStmt) => breakStmt;
+
+  @override
+  Stmt visitContinueStmt(ContinueStmt continueStmt) => continueStmt;
+
+  @override
+  Stmt visitDoWhileStmt(DoWhileStmt doWhileStmt) => 
+    DoWhileStmt(doWhileStmt.body.accept(this), doWhileStmt.cond, doWhileStmt.label);
+
+  @override
+  Stmt visitForStmt(ForStmt forStmt) => 
+    ForStmt(forStmt.init.accept(this), forStmt.cond, forStmt.post, forStmt.body.accept(this), forStmt.label);
+
+  @override
+  Stmt visitWhileStmt(WhileStmt whileStmt) => WhileStmt(whileStmt.cond, whileStmt.body.accept(this), whileStmt.label);
+  
+  @override
+  ForInit visitInitDeclForInit(InitDeclForInit initDeclForInit) => initDeclForInit;
+  
+  @override
+  ForInit visitInitExpForInit(InitExpForInit initExpForInit) => initExpForInit;
+}
+
+class LoopLabeling implements 
+  ProgramAstVisitor<(Issues, (int, ProgramAst))>,
+  FunctionAstVisitor<FunctionAst>,
+  BlockVisitor<Block>,
+  BlockItemVisitor<BlockItem>,
+  StmtVisitor<Stmt>,
+  ForInitVisitor<ForInit>
+{
+  final Issues _issues = [];
+  int _counter = 0;
+  final labels = Stack<String>();
+  
+  LoopLabeling(int counter): _counter = counter;
+
+  static (int, ProgramAst) transform(ProgramAst program, int counter) {
+    final (issues, result) = program.accept(LoopLabeling(counter));
+    if (issues.isNotEmpty) {
+      throw MultiIssues(issues);
+    }
+
+    return result;
+  }
+
+  String _makeLabel(String lexeme) => "$lexeme${_counter++}";
+
+  @override
+  (Issues, (int, ProgramAst)) visitProgramAst(ProgramAst program) => 
+    (_issues, (_counter, ProgramAst(program.main.accept(this))));
+
+  @override
+  FunctionAst visitFunctionAst(FunctionAst function) {
+    Block newBody = function.body.accept(this);
+    return FunctionAst(function.name, newBody);
+  }
+
+  @override
+  Block visitBlock(Block block) => Block(block.items.map((item) => item.accept(this)).toList());
+
+  @override
+  BlockItem visitDeclBlockItem(DeclBlockItem declBlockItem) => declBlockItem;
+
+  @override
+  Stmt visitExpressionStmt(ExpressionStmt expressionStmt) => expressionStmt;
+
+  @override
+  Stmt visitGotoStmt(GotoStmt gotoStmt) => gotoStmt;
+
+  @override
+  Stmt visitIfStmt(IfStmt ifStmt) => 
+    IfStmt(ifStmt.cond, ifStmt.then.accept(this), ifStmt.else$?.accept(this));
+
+  @override
+  Stmt visitLabeledStmtStmt(LabeledStmtStmt labeledStmtStmt) => labeledStmtStmt;
+
+  @override
+  Stmt visitNullStmt(NullStmt nullStmt) => nullStmt;
+
+  @override
+  Stmt visitReturnStmt(ReturnStmt returnStmt) => returnStmt;
+
+  @override
+  BlockItem visitStmtBlockItem(StmtBlockItem stmtBlockItem) => 
+    StmtBlockItem(stmtBlockItem.stmt.accept(this));   
   
   @override
   Stmt visitCompoundStmt(CompoundStmt compoundStmt) => 
     CompoundStmt(compoundStmt.block.accept(this));
+    
+  @override
+  Stmt visitBreakStmt(BreakStmt breakStmt) {
+    if (labels.peek() == null) {
+      _issues.add((breakStmt.token.location, "`break` statement must be inside a loop."));
+    }
+
+    return BreakStmt(breakStmt.token, labels.peek() ?? "");
+  }
+
+  @override
+  Stmt visitContinueStmt(ContinueStmt continueStmt) {
+    if (labels.peek() == null) {
+      _issues.add((continueStmt.token.location, "`continue` statement must be inside a loop."));
+    }
+
+    return ContinueStmt(continueStmt.token, labels.peek() ?? "");
+  }
+
+  @override
+  Stmt visitDoWhileStmt(DoWhileStmt doWhileStmt) {
+    final label = _makeLabel("do.while");
+    try {
+      labels.push(label);
+      return DoWhileStmt(doWhileStmt.body.accept(this), doWhileStmt.cond, label);
+    } finally {
+      labels.pop();
+    }
+  }
+
+  @override
+  Stmt visitForStmt(ForStmt forStmt) {
+    final label = _makeLabel("for");
+
+    try {
+      labels.push(label);
+      return ForStmt(
+        forStmt.init.accept(this), 
+        forStmt.cond, 
+        forStmt.post, 
+        forStmt.body.accept(this), 
+        label
+      );
+    } finally {
+      labels.pop();
+    }
+  }
+
+  @override
+  Stmt visitWhileStmt(WhileStmt whileStmt) {
+    final label = _makeLabel("while");
+    try {
+      labels.push(label);
+      return WhileStmt(whileStmt.cond, whileStmt.body.accept(this), label);
+    } finally {
+      labels.pop();
+    }
+  }
+  
+  @override
+  ForInit visitInitDeclForInit(InitDeclForInit initDeclForInit) => initDeclForInit;
+  
+  @override
+  ForInit visitInitExpForInit(InitExpForInit initExpForInit) => initExpForInit;
+  
+}
+
+class Stack<E> {
+  final List<E> _inner = [];
+  void push(E e) => _inner.add(e);
+  E? pop() => _inner.isEmpty ? null : _inner.removeLast();
+  E? peek() => _inner.isEmpty ? null : _inner.last;
 }

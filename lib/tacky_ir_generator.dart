@@ -7,7 +7,8 @@ class TackyIRGenerator implements
   ProgramAstVisitor<ProgramIR>,
   FunctionAstVisitor<FunctionIR>,
   BlockVisitor<List<Instr>>,
-  StmtVisitor<List<Instr>>, 
+  StmtVisitor<List<Instr>>,
+  ForInitVisitor<List<Instr>>,
   ExprVisitor<(Value, List<Instr>)>,
   DeclVisitor<List<Instr>>,
   BlockItemVisitor<List<Instr>> {
@@ -284,6 +285,56 @@ class TackyIRGenerator implements
   @override
   List<Instr> visitCompoundStmt(CompoundStmt compoundStmt) => 
     compoundStmt.block.accept(this);
+    
+  String breakLabel(String suffix) => "break_$suffix";
+  String continueLabel(String suffix) => "continue_$suffix";
+
+  @override
+  List<Instr> visitBreakStmt(BreakStmt breakStmt) => [JumpInstr(breakLabel(breakStmt.label))];
+
+  @override
+  List<Instr> visitContinueStmt(ContinueStmt continueStmt) => [JumpInstr(continueLabel(continueStmt.label))];
+
+  @override
+  List<Instr> visitDoWhileStmt(DoWhileStmt doWhileStmt) => [
+    LabelInstr("start_${doWhileStmt.label}"),
+    ...doWhileStmt.body.accept(this),
+    LabelInstr(continueLabel(doWhileStmt.label)),
+    ...doWhileStmt.cond.accept(this)
+      .map((value) => JumpIfNotZeroInstr(value, "start_${doWhileStmt.label}")),
+    LabelInstr(breakLabel(doWhileStmt.label)),
+  ];
+
+  @override
+  List<Instr> visitWhileStmt(WhileStmt whileStmt) => [
+    LabelInstr(continueLabel(whileStmt.label)),
+    ...whileStmt.cond.accept(this)
+      .map((value) => JumpIfZeroInstr(value, breakLabel(whileStmt.label))),
+    ...whileStmt.body.accept(this),
+    JumpInstr(continueLabel(whileStmt.label)),
+    LabelInstr(breakLabel(whileStmt.label)),
+  ];
+
+  @override
+  List<Instr> visitForStmt(ForStmt forStmt) => [
+    ...forStmt.init.accept(this),
+    LabelInstr("start_${forStmt.label}"),
+    ...forStmt.cond?.accept(this)
+      .map((value) => JumpIfZeroInstr(value, breakLabel(forStmt.label))) ?? [],
+    ...forStmt.body.accept(this),
+    LabelInstr(continueLabel(forStmt.label)),
+    ...forStmt.post?.accept(this).$2 ?? [],
+    JumpInstr("start_${forStmt.label}"),
+    LabelInstr(breakLabel(forStmt.label))
+  ];
+
+  @override
+  List<Instr> visitInitDeclForInit(InitDeclForInit initDeclForInit) => 
+    initDeclForInit.decl.accept(this);
+
+  @override
+  List<Instr> visitInitExpForInit(InitExpForInit initExpForInit) => initExpForInit.expr?.accept(this).$2 ?? [];
+
 }
 
 extension on ((Value, List<Instr>), (Value, List<Instr>)) {

@@ -49,6 +49,11 @@ enum TokenKind {
   questionMark,
   colon,
   goto,
+  do$,
+  while$,
+  for$,
+  break$,
+  continue$,
   eoi,
   error,
 }

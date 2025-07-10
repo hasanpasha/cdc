@@ -120,6 +120,11 @@ abstract class StmtVisitor<R> {
   R visitGotoStmt(GotoStmt gotoStmt);
   R visitLabeledStmtStmt(LabeledStmtStmt labeledStmtStmt);
   R visitCompoundStmt(CompoundStmt compoundStmt);
+  R visitBreakStmt(BreakStmt breakStmt);
+  R visitContinueStmt(ContinueStmt continueStmt);
+  R visitWhileStmt(WhileStmt whileStmt);
+  R visitDoWhileStmt(DoWhileStmt doWhileStmt);
+  R visitForStmt(ForStmt forStmt);
   R visitNullStmt(NullStmt nullStmt);
 }
 
@@ -233,6 +238,111 @@ class CompoundStmt extends Stmt with EquatableMixin {
   }
 }
 
+class BreakStmt extends Stmt with EquatableMixin {
+  BreakStmt(this.token, this.label);
+
+  final Token token;
+
+  final String label;
+
+  @override
+  List<Object?> get props => [token, label];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(StmtVisitor<R> visitor) {
+    return visitor.visitBreakStmt(this);
+  }
+}
+
+class ContinueStmt extends Stmt with EquatableMixin {
+  ContinueStmt(this.token, this.label);
+
+  final Token token;
+
+  final String label;
+
+  @override
+  List<Object?> get props => [token, label];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(StmtVisitor<R> visitor) {
+    return visitor.visitContinueStmt(this);
+  }
+}
+
+class WhileStmt extends Stmt with EquatableMixin {
+  WhileStmt(this.cond, this.body, this.label);
+
+  final Expr cond;
+
+  final Stmt body;
+
+  final String label;
+
+  @override
+  List<Object?> get props => [cond, body, label];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(StmtVisitor<R> visitor) {
+    return visitor.visitWhileStmt(this);
+  }
+}
+
+class DoWhileStmt extends Stmt with EquatableMixin {
+  DoWhileStmt(this.body, this.cond, this.label);
+
+  final Stmt body;
+
+  final Expr cond;
+
+  final String label;
+
+  @override
+  List<Object?> get props => [body, cond, label];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(StmtVisitor<R> visitor) {
+    return visitor.visitDoWhileStmt(this);
+  }
+}
+
+class ForStmt extends Stmt with EquatableMixin {
+  ForStmt(this.init, this.cond, this.post, this.body, this.label);
+
+  final ForInit init;
+
+  final Expr? cond;
+
+  final Expr? post;
+
+  final Stmt body;
+
+  final String label;
+
+  @override
+  List<Object?> get props => [init, cond, post, body, label];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(StmtVisitor<R> visitor) {
+    return visitor.visitForStmt(this);
+  }
+}
+
 class NullStmt extends Stmt with EquatableMixin {
   NullStmt();
 
@@ -245,6 +355,51 @@ class NullStmt extends Stmt with EquatableMixin {
   @override
   R accept<R>(StmtVisitor<R> visitor) {
     return visitor.visitNullStmt(this);
+  }
+}
+
+abstract class ForInit {
+  R accept<R>(ForInitVisitor<R> visitor) {
+    throw UnimplementedError();
+  }
+}
+
+abstract class ForInitVisitor<R> {
+  R visitInitDeclForInit(InitDeclForInit initDeclForInit);
+  R visitInitExpForInit(InitExpForInit initExpForInit);
+}
+
+class InitDeclForInit extends ForInit with EquatableMixin {
+  InitDeclForInit(this.decl);
+
+  final Decl decl;
+
+  @override
+  List<Object?> get props => [decl];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(ForInitVisitor<R> visitor) {
+    return visitor.visitInitDeclForInit(this);
+  }
+}
+
+class InitExpForInit extends ForInit with EquatableMixin {
+  InitExpForInit(this.expr);
+
+  final Expr? expr;
+
+  @override
+  List<Object?> get props => [expr];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(ForInitVisitor<R> visitor) {
+    return visitor.visitInitExpForInit(this);
   }
 }
 

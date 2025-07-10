@@ -166,6 +166,11 @@ class Lexer extends Iterable<Token> {
       "if" => _token(.if$),
       "else" => _token(.else$),
       "goto" => _token(.goto),
+      "do" => _token(.do$),
+      "while" => _token(.while$),
+      "for" => _token(.for$),
+      "break" => _token(.break$),
+      "continue" => _token(.continue$),
       String() => _token(.identifier),
     };
   }

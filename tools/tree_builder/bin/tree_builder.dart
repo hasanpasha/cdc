@@ -96,7 +96,9 @@ void generate(
   _generateNodes(library, grammar);
 
   final raw = library.build().accept(emitter).toString();
-  final formatted = DartFormatter(languageVersion: DartFormatter.latestLanguageVersion).format(raw);
+  final formatted = DartFormatter(
+    languageVersion: DartFormatter.latestLanguageVersion,
+  ).format(raw);
   File(outputPath).writeAsStringSync(formatted);
   print('Generated AST was written to "$outputPath"');
 }
@@ -105,7 +107,7 @@ void _addDirectives(LibraryBuilder library, List<Directive>? directives) {
   if (directives == null) return;
   for (final directive in directives) {
     // if (directive.) {
-      library.directives.add(directive);
+    library.directives.add(directive);
     // }
   }
 }
@@ -123,11 +125,7 @@ void _generateNodes(LibraryBuilder library, Scheme grammar) {
       _generateConcreteWithVisitorClass(library, baseName, fields);
       _generateVisitorInterface(library, baseName);
     } else {
-      _generateAbstractAndVariants(
-        library,
-        baseName,
-        variants,
-      );
+      _generateAbstractAndVariants(library, baseName, variants);
     }
   }
 }
@@ -137,52 +135,100 @@ void _generateConcreteWithVisitorClass(
   String className,
   Map<String, String> fields,
 ) {
-  library.body.add(Class((c) => c
-    ..name = className
-    ..mixins.add(refer('EquatableMixin'))
-    ..fields.addAll(fields.entries.map((e) => Field((f) => f
-      ..name = _safeName(e.key)
-      ..type = refer(e.value)
-      ..modifier = FieldModifier.final$)))
-    ..constructors.add(Constructor((ctor) => ctor
-      ..requiredParameters.addAll(fields.entries.map((e) => Parameter((p) => p
-        ..name = _safeName(e.key)
-        ..toThis = true)))))
-    ..methods.add(Method((m) => m
-      ..name = 'props'
-      ..annotations.add(CodeExpression(Code('override')))
-      ..returns = refer('List<Object?>')
-      ..type = MethodType.getter
-      ..lambda = true
-      ..body = Code('[${fields.keys.map(_safeName).join(', ')}]')))
-    ..methods.add(Method((m) => m
-      ..name = 'stringify'
-      ..annotations.add(CodeExpression(Code('override')))
-      ..returns = refer('bool?')
-      ..type = MethodType.getter
-      ..lambda = true
-      ..body = Code('true')))
-    ..methods.add(Method((m) => m
-      ..name = 'accept'
-      ..types.add(refer('R'))
-      ..returns = refer('R')
-      ..requiredParameters.add(Parameter((p) => p
-        ..name = 'visitor'
-        ..type = refer('${className}Visitor<R>')))
-      ..body = Code('return visitor.visit$className(this);')))));
+  library.body.add(
+    Class(
+      (c) => c
+        ..name = className
+        ..mixins.add(refer('EquatableMixin'))
+        ..fields.addAll(
+          fields.entries.map(
+            (e) => Field(
+              (f) => f
+                ..name = _safeName(e.key)
+                ..type = refer(e.value)
+                ..modifier = FieldModifier.final$,
+            ),
+          ),
+        )
+        ..constructors.add(
+          Constructor(
+            (ctor) => ctor
+              ..requiredParameters.addAll(
+                fields.entries.map(
+                  (e) => Parameter(
+                    (p) => p
+                      ..name = _safeName(e.key)
+                      ..toThis = true,
+                  ),
+                ),
+              ),
+          ),
+        )
+        ..methods.add(
+          Method(
+            (m) => m
+              ..name = 'props'
+              ..annotations.add(CodeExpression(Code('override')))
+              ..returns = refer('List<Object?>')
+              ..type = MethodType.getter
+              ..lambda = true
+              ..body = Code('[${fields.keys.map(_safeName).join(', ')}]'),
+          ),
+        )
+        ..methods.add(
+          Method(
+            (m) => m
+              ..name = 'stringify'
+              ..annotations.add(CodeExpression(Code('override')))
+              ..returns = refer('bool?')
+              ..type = MethodType.getter
+              ..lambda = true
+              ..body = Code('true'),
+          ),
+        )
+        ..methods.add(
+          Method(
+            (m) => m
+              ..name = 'accept'
+              ..types.add(refer('R'))
+              ..returns = refer('R')
+              ..requiredParameters.add(
+                Parameter(
+                  (p) => p
+                    ..name = 'visitor'
+                    ..type = refer('${className}Visitor<R>'),
+                ),
+              )
+              ..body = Code('return visitor.visit$className(this);'),
+          ),
+        ),
+    ),
+  );
 }
 
 void _generateVisitorInterface(LibraryBuilder library, String className) {
-  library.body.add(Class((b) => b
-    ..name = '${className}Visitor'
-    ..types.add(refer('R'))
-    ..abstract = true
-    ..methods.add(Method((m) => m
-      ..name = 'visit$className'
-      ..returns = refer('R')
-      ..requiredParameters.add(Parameter((p) => p
-        ..name = className.toCamelCase()
-        ..type = refer(className)))))));
+  library.body.add(
+    Class(
+      (b) => b
+        ..name = '${className}Visitor'
+        ..types.add(refer('R'))
+        ..abstract = true
+        ..methods.add(
+          Method(
+            (m) => m
+              ..name = 'visit$className'
+              ..returns = refer('R')
+              ..requiredParameters.add(
+                Parameter(
+                  (p) => p
+                    ..name = className.toCamelCase()
+                    ..type = refer(className),
+                ),
+              ),
+          ),
+        ),
+    ),
+  );
 }
 
 void _generateAbstractAndVariants(
@@ -190,71 +236,131 @@ void _generateAbstractAndVariants(
   String baseName,
   Map<String, Map<String, String>> subclasses,
 ) {
-  library.body.add(Class((b) => b
-    ..name = baseName
-    ..abstract = true
-    ..methods.add(Method((m) => m
-      ..name = 'accept'
-      ..returns = refer('R')
-      ..types.add(refer('R'))
-      ..requiredParameters.add(Parameter((p) => p
-        ..name = 'visitor'
-        ..type = refer('${baseName}Visitor<R>')))
-      ..body = Code('throw UnimplementedError();')))));
+  library.body.add(
+    Class(
+      (b) => b
+        ..name = baseName
+        ..abstract = true
+        ..methods.add(
+          Method(
+            (m) => m
+              ..name = 'accept'
+              ..returns = refer('R')
+              ..types.add(refer('R'))
+              ..requiredParameters.add(
+                Parameter(
+                  (p) => p
+                    ..name = 'visitor'
+                    ..type = refer('${baseName}Visitor<R>'),
+                ),
+              )
+              ..body = Code('throw UnimplementedError();'),
+          ),
+        ),
+    ),
+  );
 
-  library.body.add(Class((b) => b
-    ..name = '${baseName}Visitor'
-    ..types.add(refer('R'))
-    ..abstract = true
-    ..methods.addAll(subclasses.entries.map((entry) {
-      final className = '${entry.key}$baseName';
-      return Method((m) => m
-        ..name = 'visit$className'
-        ..returns = refer('R')
-        ..requiredParameters.add(Parameter((p) => p
-          ..name = className.toCamelCase()
-          ..type = refer(className))));
-    }))));
+  library.body.add(
+    Class(
+      (b) => b
+        ..name = '${baseName}Visitor'
+        ..types.add(refer('R'))
+        ..abstract = true
+        ..methods.addAll(
+          subclasses.entries.map((entry) {
+            final className = '${entry.key}$baseName';
+            return Method(
+              (m) => m
+                ..name = 'visit$className'
+                ..returns = refer('R')
+                ..requiredParameters.add(
+                  Parameter(
+                    (p) => p
+                      ..name = className.toCamelCase()
+                      ..type = refer(className),
+                  ),
+                ),
+            );
+          }),
+        ),
+    ),
+  );
 
   for (final subclass in subclasses.entries) {
     final className = '${subclass.key}$baseName';
     final fields = subclass.value;
 
-    library.body.add(Class((c) => c
-      ..name = className
-      ..extend = refer(baseName)
-      ..mixins.add(refer('EquatableMixin'))
-      ..fields.addAll(fields.entries.map((entry) => Field((f) => f
-        ..name = _safeName(entry.key)
-        ..type = refer(entry.value)
-        ..modifier = FieldModifier.final$)))
-      ..constructors.add(Constructor((ctor) => ctor
-        ..requiredParameters.addAll(fields.entries.map((entry) => Parameter((p) => p
-          ..name = _safeName(entry.key)
-          ..toThis = true)))))
-      ..methods.add(Method((m) => m
-        ..name = 'props'
-        ..annotations.add(CodeExpression(Code('override')))
-        ..returns = refer('List<Object?>')
-        ..type = MethodType.getter
-        ..lambda = true
-        ..body = Code('[${fields.keys.map(_safeName).join(', ')}]')))
-      ..methods.add(Method((m) => m
-        ..name = 'stringify'
-        ..annotations.add(CodeExpression(Code('override')))
-        ..returns = refer('bool?')
-        ..type = MethodType.getter
-        ..lambda = true
-        ..body = Code('true')))
-      ..methods.add(Method((m) => m
-        ..name = 'accept'
-        ..annotations.add(CodeExpression(Code('override')))
-        ..returns = refer('R')
-        ..types.add(refer('R'))
-        ..requiredParameters.add(Parameter((p) => p
-          ..name = 'visitor'
-          ..type = refer('${baseName}Visitor<R>')))
-        ..body = Code('return visitor.visit$className(this);')))));
+    library.body.add(
+      Class(
+        (c) => c
+          ..name = className
+          ..extend = refer(baseName)
+          ..mixins.add(refer('EquatableMixin'))
+          ..fields.addAll(
+            fields.entries.map(
+              (entry) => Field(
+                (f) => f
+                  ..name = _safeName(entry.key)
+                  ..type = refer(entry.value)
+                  ..modifier = FieldModifier.final$,
+              ),
+            ),
+          )
+          ..constructors.add(
+            Constructor(
+              (ctor) => ctor
+                ..requiredParameters.addAll(
+                  fields.entries.map(
+                    (entry) => Parameter(
+                      (p) => p
+                        ..name = _safeName(entry.key)
+                        ..toThis = true,
+                    ),
+                  ),
+                ),
+            ),
+          )
+          ..methods.add(
+            Method(
+              (m) => m
+                ..name = 'props'
+                ..annotations.add(CodeExpression(Code('override')))
+                ..returns = refer('List<Object?>')
+                ..type = MethodType.getter
+                ..lambda = true
+                ..body = Code('[${fields.keys.map(_safeName).join(', ')}]'),
+            ),
+          )
+          ..methods.add(
+            Method(
+              (m) => m
+                ..name = 'stringify'
+                ..annotations.add(CodeExpression(Code('override')))
+                ..returns = refer('bool?')
+                ..type = MethodType.getter
+                ..lambda = true
+                ..body = Code('true'),
+            ),
+          )
+          ..methods.add(
+            Method(
+              (m) => m
+                ..name = 'accept'
+                ..annotations.add(CodeExpression(Code('override')))
+                ..returns = refer('R')
+                ..types.add(refer('R'))
+                ..requiredParameters.add(
+                  Parameter(
+                    (p) => p
+                      ..name = 'visitor'
+                      ..type = refer('${baseName}Visitor<R>'),
+                  ),
+                )
+                ..body = Code('return visitor.visit$className(this);'),
+            ),
+          ),
+      ),
+    );
   }
 }
 

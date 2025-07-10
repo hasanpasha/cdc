@@ -55,7 +55,40 @@
             "Compound": {
                 "block": "Block"
             },
+            "Break": {
+                "token": "Token",
+                "label": "String"
+            },
+            "Continue": {
+                "token": "Token",
+                "label": "String"
+            },
+            "While": {
+                "cond": "Expr",
+                "body": "Stmt",
+                "label": "String"
+            },
+            "DoWhile": {
+                "body": "Stmt",
+                "cond": "Expr",
+                "label": "String"
+            },
+            "For": {
+                "init": "ForInit",
+                "cond": "Expr?",
+                "post": "Expr?",
+                "body": "Stmt",
+                "label": "String"
+            },
             "Null": {}
+        },
+        "ForInit": {
+            "InitDecl": {
+                "decl": "Decl"
+            },
+            "InitExp": {
+                "expr": "Expr?"
+            }
         },
         "Decl": {
             "Variable": {

@@ -197,13 +197,20 @@ class Parser {
   }
 
   Stmt statement() {
-    if (_peek().kind == .semicolon) return _nullStmt();
-    if (_peek().kind == .return$) return _returnStmt();
-    if (_peek().kind == .if$) return _ifStmt();
-    if (_peek().kind == .goto) return _gotoStmt();
-    if (_peek().kind == .identifier) return _labeledStmtOrExprStmt();
-    if (_peek().kind == .leftBraces) return _compoundStmt();
-    return _expressionStmt();
+    return switch (_peek().kind) {
+      .semicolon => _nullStmt(),
+      .return$ => _returnStmt(),
+      .if$ => _ifStmt(),
+      .goto => _gotoStmt(),
+      .identifier => _labeledStmtOrExprStmt(),
+      .leftBraces => _compoundStmt(),
+      .break$ => _breakStmt(),
+      .continue$ => _continueStmt(),
+      .while$ => _whileStmt(),
+      .do$ => _doWhileStmt(),
+      .for$ => _forStmt(),
+      _ => _expressionStmt(),
+    };
   }
 
 
@@ -258,6 +265,76 @@ class Parser {
 
   Stmt _compoundStmt() => 
     CompoundStmt(_block());
+
+  Stmt _breakStmt() {
+    final token = _consume(.break$, "Expect a 'break' keyword.");
+    _consume(.semicolon, "Expect a ';' closing `break` stmt.");
+    return BreakStmt(token, "");
+  }
+
+  Stmt _continueStmt() {
+    final token = _consume(.continue$, "Expect a 'continue' keyword.");
+    _consume(.semicolon, "Expect a ';' closing `constinue` stmt.");
+    return ContinueStmt(token, "");
+  }
+
+  Stmt _whileStmt() {
+    _consume(.while$, "Expect a 'while' keyword");
+    _consume(.leftParen, "Expect a '(' before while condition expression.");
+    final cond = expression();
+    _consume(.rightParen, "Expect a ')' after while condition expression.");
+    final body = statement();
+
+    return WhileStmt(cond, body, "");
+  }
+
+  Stmt _doWhileStmt() {
+    _consume(.do$, "Expect a 'do' keyword");
+    final body = statement();
+    _consume(.while$, "Expect a 'while' keyword after 'do' body and before while condition.");
+    _consume(.leftParen, "Expect a '(' before while condition expression.");
+    final cond = expression();
+    _consume(.rightParen, "Expect a ')' after while condition expression.");
+    _consume(.semicolon, "Expect a ';' closing a do-while statement.");
+
+    return DoWhileStmt(body, cond, "");
+  }
+
+  Stmt _forStmt() {
+    _consume(.for$, "Expect a 'for' keyword.");
+    _consume(.leftParen, "Expect a '(' before `for` header.");
+    
+    environment = Environment(environment);
+    final  forInit = _forInit();
+    final cond = _optExpr(.semicolon);
+    final post = _optExpr(.rightParen);
+    final body = statement();
+    environment = environment.enclosing!;
+
+    return ForStmt(forInit, cond, post, body, "");
+  }
+
+  Expr? _optExpr(TokenKind optIndicator) {
+    if (_peek().kind == optIndicator) {
+      _advance();
+      return null;
+    }
+    final expr = expression();
+    _consume(optIndicator, "Expect a '${optIndicator.name}' after expr.");
+    return expr;
+  }
+
+  ForInit _forInit() {
+    if (_match(.semicolon)) {
+      return InitExpForInit(null);
+    } else if (_peek().kind == .int) {
+      return InitDeclForInit(declaration());
+    } else {
+      final init = InitExpForInit(expression());
+      _consume(.semicolon, "Expect a ';' after `InitExp`.");
+      return init;
+    }
+  }
 
   Map<TokenKind, PrecedenceRule> get _rules => {
     // dart format off
