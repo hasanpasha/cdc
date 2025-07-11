@@ -159,20 +159,25 @@ class Lexer extends Iterable<Token> {
       _advance();
     }
     
-    return switch (_currentLexeme()) {
-      "int" => _token(.int),
-      "void" => _token(.void$),
-      "return" => _token(.return$),
-      "if" => _token(.if$),
-      "else" => _token(.else$),
-      "goto" => _token(.goto),
-      "do" => _token(.do$),
-      "while" => _token(.while$),
-      "for" => _token(.for$),
-      "break" => _token(.break$),
-      "continue" => _token(.continue$),
-      String() => _token(.identifier),
+    final TokenKind kind = switch (_currentLexeme()) {
+      "int" => .int,
+      "void" => .void$,
+      "return" => .return$,
+      "if" => .if$,
+      "else" => .else$,
+      "goto" => .goto,
+      "do" => .do$,
+      "while" => .while$,
+      "for" => .for$,
+      "break" => .break$,
+      "continue" => .continue$,
+      "switch" => .switch$,
+      "case" => .case$,
+      "default" => .default$,
+      String() => .identifier,
     };
+
+    return _token(kind);
   }
   
   Token _number() {

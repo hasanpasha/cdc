@@ -334,7 +334,35 @@ class TackyIRGenerator implements
 
   @override
   List<Instr> visitInitExpForInit(InitExpForInit initExpForInit) => initExpForInit.expr?.accept(this).$2 ?? [];
+  
+  @override
+  List<Instr> visitCaseStmt(CaseStmt caseStmt) => [
+    LabelInstr(caseStmt.label),
+    ...caseStmt.stmt?.accept(this) ?? [],
+  ];
+  
+  @override
+  List<Instr> visitDefaultStmt(DefaultStmt defaultStmt) => [
+    LabelInstr(defaultStmt.label),
+    ...defaultStmt.stmt?.accept(this) ?? [],
+  ];
+  
+  @override
+  List<Instr> visitSwitchStmt(SwitchStmt switchStmt) {
+    final (switchValue, switchValueInstrs) = switchStmt.expr.accept(this);
+    final tmp = _makeTempVariable();
 
+    return [
+      ...switchValueInstrs,
+      ...switchStmt.cases.map((case$) => [
+        case$.expr.accept(this).mapInstrs((value) => [BinaryInstr(.equal, switchValue, value, tmp), JumpIfNotZeroInstr(tmp, case$.label)]),
+      ]).expand((e) => e).expand((e) => e),
+      if (switchStmt.defaultCase != null) JumpInstr(switchStmt.defaultCase!.label),
+      JumpInstr(breakLabel(switchStmt.label)),
+      ...switchStmt.body.accept(this),
+      LabelInstr(breakLabel(switchStmt.label))
+    ];
+  }
 }
 
 extension on ((Value, List<Instr>), (Value, List<Instr>)) {
@@ -345,4 +373,5 @@ extension on ((Value, List<Instr>), (Value, List<Instr>)) {
 extension on (Value, List<Instr>) {
   List<Instr> map(Instr Function(Value value) mapper) => [...$2, mapper($1)];
   Instr mapValue(Instr Function(Value value) mapper) => mapper($1);
+  List<Instr> mapInstrs(List<Instr> Function(Value value) mapper) => [...$2, ...mapper($1)];
 }

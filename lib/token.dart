@@ -54,6 +54,9 @@ enum TokenKind {
   for$,
   break$,
   continue$,
+  switch$,
+  case$,
+  default$,
   eoi,
   error,
 }

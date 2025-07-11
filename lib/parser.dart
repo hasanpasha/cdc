@@ -209,17 +209,20 @@ class Parser {
       .while$ => _whileStmt(),
       .do$ => _doWhileStmt(),
       .for$ => _forStmt(),
+      .switch$ => _switchStmt(),
+      .case$ => _caseStmt(),
+      .default$ => _defaultStmt(),
       _ => _expressionStmt(),
     };
   }
 
 
-  Stmt _nullStmt() {
+  NullStmt _nullStmt() {
     _consume(.semicolon, "Expect ';' in a null statement.");
     return NullStmt();
   }
 
-  Stmt _expressionStmt() {
+  ExpressionStmt _expressionStmt() {
     final expr = expression();
     _consume(.semicolon, "Expect ';' at the end of an expression statement.");
     return ExpressionStmt(expr);
@@ -232,7 +235,7 @@ class Parser {
     return ReturnStmt(keyword, expr);
   }
 
-  Stmt _ifStmt() {
+  IfStmt _ifStmt() {
     _consume(.if$, "Expect an `if` keyword.");
     _consume(.leftParen, "Expect a '(' before `if` condition expr.");
     final cond = expression();
@@ -246,7 +249,7 @@ class Parser {
     return IfStmt(cond, thenStmt, elseStmt);
   } 
 
-  Stmt _gotoStmt() {
+  GotoStmt _gotoStmt() {
     _consume(.goto, "Expect a `goto` keyword.");
     final label = _consume(.identifier, "Expect a goto destination label.");
     _consume(.semicolon, "Expect a ';' after goto label.");
@@ -263,22 +266,22 @@ class Parser {
     return _expressionStmt();
   }
 
-  Stmt _compoundStmt() => 
+  CompoundStmt _compoundStmt() => 
     CompoundStmt(_block());
 
-  Stmt _breakStmt() {
+  BreakStmt _breakStmt() {
     final token = _consume(.break$, "Expect a 'break' keyword.");
     _consume(.semicolon, "Expect a ';' closing `break` stmt.");
     return BreakStmt(token, "");
   }
 
-  Stmt _continueStmt() {
+  ContinueStmt _continueStmt() {
     final token = _consume(.continue$, "Expect a 'continue' keyword.");
     _consume(.semicolon, "Expect a ';' closing `constinue` stmt.");
     return ContinueStmt(token, "");
   }
 
-  Stmt _whileStmt() {
+  WhileStmt _whileStmt() {
     _consume(.while$, "Expect a 'while' keyword");
     _consume(.leftParen, "Expect a '(' before while condition expression.");
     final cond = expression();
@@ -288,7 +291,7 @@ class Parser {
     return WhileStmt(cond, body, "");
   }
 
-  Stmt _doWhileStmt() {
+  DoWhileStmt _doWhileStmt() {
     _consume(.do$, "Expect a 'do' keyword");
     final body = statement();
     _consume(.while$, "Expect a 'while' keyword after 'do' body and before while condition.");
@@ -300,7 +303,7 @@ class Parser {
     return DoWhileStmt(body, cond, "");
   }
 
-  Stmt _forStmt() {
+  ForStmt _forStmt() {
     _consume(.for$, "Expect a 'for' keyword.");
     _consume(.leftParen, "Expect a '(' before `for` header.");
     
@@ -335,6 +338,40 @@ class Parser {
       return init;
     }
   }
+
+  SwitchStmt _switchStmt() {
+    _consume(.switch$, "Expect a 'switch' keyword.");
+    _consume(.leftParen, "Expect a '(' before switch expr.");
+    final expr = expression();
+    _consume(.rightParen, "Expect a ')' after switch expr.");
+    final body = statement();
+
+    return SwitchStmt(expr, body, [], null, "");
+  }
+
+  CaseStmt _caseStmt() {
+    final token = _consume(.case$, "Expect a 'case' keyword.");
+    final constExpr = _constant();
+    _consume(.colon, "Expect a ':' after case expr.");
+    Stmt? stmt; 
+    if (!<TokenKind>[.case$, .default$, .rightBraces].contains(_peek().kind)) {
+      stmt = statement();
+    }
+
+    return CaseStmt(constExpr, stmt, token, "");
+  }
+
+  DefaultStmt _defaultStmt() {
+    final token = _consume(.default$, "Expect a 'default' keyword.");
+    _consume(.colon, "Expect a ':' after case expr.");
+    Stmt? stmt; 
+    if (!<TokenKind>[.case$, .default$, .rightBraces].contains(_peek().kind)) {
+      stmt = statement();
+    }
+
+    return DefaultStmt(stmt, token, "");
+  }
+
 
   Map<TokenKind, PrecedenceRule> get _rules => {
     // dart format off

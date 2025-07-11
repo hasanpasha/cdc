@@ -80,6 +80,24 @@
                 "body": "Stmt",
                 "label": "String"
             },
+            "Switch": {
+                "expr": "Expr",
+                "body": "Stmt",
+                "cases": "List<CaseStmt>",
+                "defaultCase": "DefaultStmt?",
+                "label": "String"
+            },
+            "Case": {
+                "expr": "ConstantExpr",
+                "stmt": "Stmt?",
+                "token": "Token",
+                "label": "String"
+            },
+            "Default": {
+                "stmt": "Stmt?",
+                "token": "Token",
+                "label": "String"
+            },
             "Null": {}
         },
         "ForInit": {

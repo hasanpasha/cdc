@@ -125,6 +125,9 @@ abstract class StmtVisitor<R> {
   R visitWhileStmt(WhileStmt whileStmt);
   R visitDoWhileStmt(DoWhileStmt doWhileStmt);
   R visitForStmt(ForStmt forStmt);
+  R visitSwitchStmt(SwitchStmt switchStmt);
+  R visitCaseStmt(CaseStmt caseStmt);
+  R visitDefaultStmt(DefaultStmt defaultStmt);
   R visitNullStmt(NullStmt nullStmt);
 }
 
@@ -340,6 +343,75 @@ class ForStmt extends Stmt with EquatableMixin {
   @override
   R accept<R>(StmtVisitor<R> visitor) {
     return visitor.visitForStmt(this);
+  }
+}
+
+class SwitchStmt extends Stmt with EquatableMixin {
+  SwitchStmt(this.expr, this.body, this.cases, this.defaultCase, this.label);
+
+  final Expr expr;
+
+  final Stmt body;
+
+  final List<CaseStmt> cases;
+
+  final DefaultStmt? defaultCase;
+
+  final String label;
+
+  @override
+  List<Object?> get props => [expr, body, cases, defaultCase, label];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(StmtVisitor<R> visitor) {
+    return visitor.visitSwitchStmt(this);
+  }
+}
+
+class CaseStmt extends Stmt with EquatableMixin {
+  CaseStmt(this.expr, this.stmt, this.token, this.label);
+
+  final ConstantExpr expr;
+
+  final Stmt? stmt;
+
+  final Token token;
+
+  final String label;
+
+  @override
+  List<Object?> get props => [expr, stmt, token, label];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(StmtVisitor<R> visitor) {
+    return visitor.visitCaseStmt(this);
+  }
+}
+
+class DefaultStmt extends Stmt with EquatableMixin {
+  DefaultStmt(this.stmt, this.token, this.label);
+
+  final Stmt? stmt;
+
+  final Token token;
+
+  final String label;
+
+  @override
+  List<Object?> get props => [stmt, token, label];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(StmtVisitor<R> visitor) {
+    return visitor.visitDefaultStmt(this);
   }
 }
 

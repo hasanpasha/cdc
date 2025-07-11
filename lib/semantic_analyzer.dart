@@ -6,7 +6,7 @@ ProgramAst analyze(ProgramAst programAst) {
 
   int counter = 0;
   (counter, newProgram) = LabelsResolver.transform(programAst, counter);
-  (counter, newProgram) = LoopLabeling.transform(programAst, counter);
+  (counter, newProgram) = LoopAndSwitchLabeling.transform(programAst, counter);
 
   return newProgram;
 }
@@ -133,9 +133,19 @@ class LabelsResolver implements
   
   @override
   ForInit visitInitExpForInit(InitExpForInit initExpForInit) => initExpForInit;
+  
+  @override
+  Stmt visitCaseStmt(CaseStmt caseStmt) => CaseStmt(caseStmt.expr, caseStmt.stmt?.accept(this), caseStmt.token, caseStmt.label);
+  
+  @override
+  Stmt visitDefaultStmt(DefaultStmt defaultStmt) => DefaultStmt(defaultStmt.stmt?.accept(this), defaultStmt.token, defaultStmt.label);
+  
+  @override
+  Stmt visitSwitchStmt(SwitchStmt switchStmt) => 
+    SwitchStmt(switchStmt.expr, switchStmt.body.accept(this), switchStmt.cases, switchStmt.defaultCase, switchStmt.label);
 }
 
-class LoopLabeling implements 
+class LoopAndSwitchLabeling implements 
   ProgramAstVisitor<(Issues, (int, ProgramAst))>,
   FunctionAstVisitor<FunctionAst>,
   BlockVisitor<Block>,
@@ -146,11 +156,14 @@ class LoopLabeling implements
   final Issues _issues = [];
   int _counter = 0;
   final labels = Stack<String>();
+  final switchLabels = Stack<String>();
+  final cases = Stack<List<CaseStmt>>();
+  final defaults = Stack<List<DefaultStmt>>();
   
-  LoopLabeling(int counter): _counter = counter;
+  LoopAndSwitchLabeling(int counter): _counter = counter;
 
   static (int, ProgramAst) transform(ProgramAst program, int counter) {
-    final (issues, result) = program.accept(LoopLabeling(counter));
+    final (issues, result) = program.accept(LoopAndSwitchLabeling(counter));
     if (issues.isNotEmpty) {
       throw MultiIssues(issues);
     }
@@ -187,7 +200,8 @@ class LoopLabeling implements
     IfStmt(ifStmt.cond, ifStmt.then.accept(this), ifStmt.else$?.accept(this));
 
   @override
-  Stmt visitLabeledStmtStmt(LabeledStmtStmt labeledStmtStmt) => labeledStmtStmt;
+  Stmt visitLabeledStmtStmt(LabeledStmtStmt labeledStmtStmt) => 
+    LabeledStmtStmt(labeledStmtStmt.label, labeledStmtStmt.stmt.accept(this));
 
   @override
   Stmt visitNullStmt(NullStmt nullStmt) => nullStmt;
@@ -206,7 +220,7 @@ class LoopLabeling implements
   @override
   Stmt visitBreakStmt(BreakStmt breakStmt) {
     if (labels.peek() == null) {
-      _issues.add((breakStmt.token.location, "`break` statement must be inside a loop."));
+      _issues.add((breakStmt.token.location, "`break` statement must be inside a loop or a switch statement."));
     }
 
     return BreakStmt(breakStmt.token, labels.peek() ?? "");
@@ -214,11 +228,11 @@ class LoopLabeling implements
 
   @override
   Stmt visitContinueStmt(ContinueStmt continueStmt) {
-    if (labels.peek() == null) {
-      _issues.add((continueStmt.token.location, "`continue` statement must be inside a loop."));
+    if (labels.peekUntil((label) => !label.startsWith("switch")) == null) {
+      _issues.add((continueStmt.token.location, "`continue` statement must be inside a loop statement."));
     }
 
-    return ContinueStmt(continueStmt.token, labels.peek() ?? "");
+    return ContinueStmt(continueStmt.token, labels.peekUntil((label) => !label.startsWith("switch")) ?? "");
   }
 
   @override
@@ -267,6 +281,71 @@ class LoopLabeling implements
   @override
   ForInit visitInitExpForInit(InitExpForInit initExpForInit) => initExpForInit;
   
+  @override
+  Stmt visitCaseStmt(CaseStmt caseStmt) {
+    if (switchLabels.peek() == null) {
+      _issues.add((caseStmt.token.location, "`case` statement must be inside a switch statement."));
+      return CaseStmt(caseStmt.expr, caseStmt.stmt?.accept(this), caseStmt.token, caseStmt.label);
+    }
+
+    final caseBody = caseStmt.stmt?.accept(this);
+    final thisCases = cases.peek()!;
+    final caseIdx = thisCases.length; 
+    final stmt = CaseStmt(caseStmt.expr, caseBody, caseStmt.token, "case_${caseIdx}_${switchLabels.peek() ?? ""}");
+    
+    for (CaseStmt case$ in thisCases) {
+      if (case$.expr == stmt.expr) {
+        _issues.add((stmt.token.location, "case lvalue has already appeared at line ${case$.expr.value.location.line}"));
+      }
+    }
+    
+    thisCases.add(stmt);
+    return stmt;
+  }
+  
+  @override
+  Stmt visitDefaultStmt(DefaultStmt defaultStmt) {
+    if (switchLabels.peek() == null) {
+      _issues.add((defaultStmt.token.location, "`default` statement must be inside a switch statement."));
+      return DefaultStmt(defaultStmt.stmt?.accept(this), defaultStmt.token, defaultStmt.label);
+    }
+
+    final defaultBody = defaultStmt.stmt?.accept(this);
+    final thisDefaults = defaults.peek()!;
+    final defaultIdx = thisDefaults.length; 
+    final stmt = DefaultStmt(defaultBody, defaultStmt.token, "default_${defaultIdx}_${switchLabels.peek() ?? ""}");
+    thisDefaults.add(stmt);
+
+    if (thisDefaults.length > 1) {
+      for (DefaultStmt stmt in thisDefaults.sublist(1)) {
+        _issues.add((stmt.token.location, "Only one default statement is allowed per switch statment."));
+      }
+    }
+
+    return stmt;
+  }
+  
+  @override
+  Stmt visitSwitchStmt(SwitchStmt switchStmt) {
+    final label = _makeLabel("switch");
+    late final Stmt body;
+    final List<CaseStmt> thisCases = [];
+    final List<DefaultStmt> thisDefaults = [];
+    try {
+      switchLabels.push(label);
+      labels.push(label);
+      cases.push(thisCases);
+      defaults.push(thisDefaults);
+      body = switchStmt.body.accept(this);
+    } finally {
+      labels.pop();
+      switchLabels.pop();
+      cases.pop();
+      defaults.pop();
+    }
+
+    return SwitchStmt(switchStmt.expr, body, thisCases, thisDefaults.firstOrNull, label);
+  }
 }
 
 class Stack<E> {
@@ -274,4 +353,11 @@ class Stack<E> {
   void push(E e) => _inner.add(e);
   E? pop() => _inner.isEmpty ? null : _inner.removeLast();
   E? peek() => _inner.isEmpty ? null : _inner.last;
+  E? peekUntil(bool Function(E p0) peeker) {
+    for (var element in _inner.reversed) {
+      if (peeker(element)) return element;
+    }
+    return null;
+  }
+  
 }

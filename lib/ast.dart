@@ -47,7 +47,9 @@ class ASTPrettier
 
   @override
   String visitBlock(Block block) =>
-      _withIndent(() => block.items.map((item) => item.accept(this)).join(","));
+      _withIndent(
+    () => block.items.map((item) => item.accept(this)).join(",$_indent"),
+  );
 
   @override
   String visitReturnStmt(ReturnStmt ret) =>
@@ -169,6 +171,25 @@ class ASTPrettier
   @override
   String visitInitExpForInit(InitExpForInit initExpForInit) =>
       _withIndent(() => "InitExp(${initExpForInit.expr?.accept(this)})");
+      
+  @override
+  String visitCaseStmt(CaseStmt caseStmt) => _withIndent(
+    () =>
+        "Case($_indent${caseStmt.expr.accept(this)},$_indent${caseStmt.stmt?.accept(this)},$_indent${caseStmt.label}$_indentLast)",
+  );
+
+  @override
+  String visitDefaultStmt(DefaultStmt defaultStmt) => _withIndent(
+    () =>
+        "Default($_indent${defaultStmt.stmt?.accept(this)},$_indent${defaultStmt.label}$_indentLast)",
+  );
+
+  @override
+  String visitSwitchStmt(SwitchStmt switchStmt) => _withIndent(
+    () =>
+        "Switch($_indent${switchStmt.expr.accept(this)},$_indent${switchStmt.body.accept(this)},"
+        "$_indent${switchStmt.cases.map((caseStmt) => caseStmt.accept(this))},$_indent${switchStmt.defaultCase?.accept(this)}$_indentLast)",
+  );
 }
 
 class ExprPolishNotation implements ExprVisitor<String> {
