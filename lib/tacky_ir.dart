@@ -1,25 +1,8 @@
+import 'package:equatable/equatable.dart';
+
 part 'tacky_ir.g.dart';
 
-class ProgramIR {
-  final FunctionIR functionDefinition;
-
-  ProgramIR(this.functionDefinition);
-  
-  @override
-  String toString() => TackyIRPrettier.prettify(this);
-}
-
-class FunctionIR {
-  final String name;
-  final List<Instr> instructions;
-
-  FunctionIR(this.name, this.instructions);
-}
-
-enum UnaryOperator {
-  negate,
-  complement,
-}
+enum UnaryOperator { negate, complement, not }
 
 enum BinaryOperator {
   add,
@@ -32,27 +15,91 @@ enum BinaryOperator {
   xor,
   shl,
   shr,
+  equal,
+  notEqual,
+  less,
+  lessEqual,
+  greater,
+  greaterEqual,
 }
 
-class TackyIRPrettier implements InstrVisitor<String>, ValueVisitor<String> {
-  static String prettify(ProgramIR program) => TackyIRPrettier().visitProgram(program);
-  
-  String visitProgram(ProgramIR program) => "ProgramIR(${visitFunction(program.functionDefinition)})";
-
-  String visitFunction(FunctionIR func) => "Function(${func.name}, ${func.instructions.map((ins) => ins.accept(this)).join(', ')})";
-  
+class TackyIrInspector
+    implements
+        ProgramIRVisitor<String>,
+        FunctionIRVisitor<String>,
+        InstrVisitor<String>,
+        ValueVisitor<String> {
   @override
-  String visitReturnInstr(ReturnInstr returnInstr) => "Return(${returnInstr.value.accept(this)})";
-  
-  @override
-  String visitBinaryInstr(BinaryInstr binaryInstr) => "Binary(${binaryInstr.operator}, ${binaryInstr.lhs.accept(this)}, ${binaryInstr.rhs.accept(this)}, ${binaryInstr.dst.accept(this)})";
+  String visitBinaryInstr(BinaryInstr binaryInstr) =>
+      "${binaryInstr.dst.accept(this)} = ${binaryInstr.lhs.accept(this)} ${binaryInstr.operator.symbol} ${binaryInstr.rhs.accept(this)}";
 
   @override
-  String visitUnaryInstr(UnaryInstr unaryInstr) => "Unary(${unaryInstr.operator}, ${unaryInstr.src.accept(this)}, ${unaryInstr.dst.accept(this)})";
+  String visitConstantValue(ConstantValue constantValue) => constantValue.value;
 
   @override
-  String visitConstantValue(ConstantValue constantValue) => "Constant(${constantValue.value})";
+  String visitCopyInstr(CopyInstr copyInstr) =>
+      "${copyInstr.dst.accept(this)} = ${copyInstr.src.accept(this)}";
 
   @override
-  String visitVariableValue(VariableValue variableValue) => "Variable(${variableValue.name})";
+  String visitFunctionIR(FunctionIR functionIr) =>
+      "func ${functionIr.name}>\n"
+      "${functionIr.instructions.map((instr) => instr.accept(this)).join("\n")}";
+
+  @override
+  String visitJumpIfNotZeroInstr(JumpIfNotZeroInstr jumpIfNotZeroInstr) =>
+      "jump-if-not-zero ${jumpIfNotZeroInstr.condition.accept(this)}, ${jumpIfNotZeroInstr.target}";
+
+  @override
+  String visitJumpIfZeroInstr(JumpIfZeroInstr jumpIfZeroInstr) =>
+      "jump-if-zero ${jumpIfZeroInstr.condition.accept(this)}, ${jumpIfZeroInstr.target}";
+
+  @override
+  String visitJumpInstr(JumpInstr jumpInstr) => "jump ${jumpInstr.target}";
+
+  @override
+  String visitLabelInstr(LabelInstr labelInstr) => "${labelInstr.value}:";
+
+  @override
+  String visitProgramIR(ProgramIR programIr) =>
+      programIr.functionDefinition.accept(this);
+
+  @override
+  String visitReturnInstr(ReturnInstr returnInstr) =>
+      "return ${returnInstr.value.accept(this)}";
+
+  @override
+  String visitUnaryInstr(UnaryInstr unaryInstr) =>
+      "${unaryInstr.dst.accept(this)} = ${unaryInstr.operator.symbol} ${unaryInstr.src.accept(this)}";
+
+  @override
+  String visitVariableValue(VariableValue variableValue) => variableValue.name;
+}
+
+extension on BinaryOperator {
+  get symbol => switch(this) {
+    .add => "+",
+    .subtract => "-",
+    .multiply => "*",
+    .divide => "/",
+    .remainder => "%",
+    .band => "&",
+    .bor => "|",
+    .xor => "^",
+    .shl => "<<",
+    .shr => ">>",
+    .equal => "==",
+    .notEqual => "!=",
+    .less => "<",
+    .lessEqual => "<=",
+    .greater => ">",
+    .greaterEqual => ">=",
+  };
+}
+
+extension on UnaryOperator {
+  get symbol => switch (this) {
+    .negate => "-",
+    .complement => "~",
+    .not => "!",
+  };
 }

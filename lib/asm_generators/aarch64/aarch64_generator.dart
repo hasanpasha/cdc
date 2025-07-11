@@ -56,6 +56,24 @@ class AArch64Generator implements AsmGenerator, InstrVisitor<List<AArch64Instr>>
           BinaryAArch64Instr(.mul, dst, rhs, dst),  // dst = dst * rhs
           BinaryAArch64Instr(.sub, dst, lhs, dst),  // dst = lhs - dst
         ];
+      case BinaryOperator.equal:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case BinaryOperator.notEqual:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case BinaryOperator.less:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case BinaryOperator.lessEqual:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case BinaryOperator.greater:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case BinaryOperator.greaterEqual:
+        // TODO: Handle this case.
+        throw UnimplementedError();
 }  }
 
   @override
@@ -73,6 +91,8 @@ class AArch64Generator implements AsmGenerator, InstrVisitor<List<AArch64Instr>>
     final AArch64Operator operator = switch (unaryInstr.operator) {
       .negate => .neg,
       .complement => .mvn,
+      // TODO: Handle this case.
+      UnaryOperator.not => throw UnimplementedError(),
     };
     return [UnaryAArch64Instr(operator, src, dst)];
   }
@@ -85,6 +105,36 @@ class AArch64Generator implements AsmGenerator, InstrVisitor<List<AArch64Instr>>
   @override
   AArch64Operand visitVariableValue(VariableValue variableValue) {
     return PseudoAArch64Operand(variableValue.name);
+  }
+  
+  @override
+  List<AArch64Instr> visitCopyInstr(CopyInstr copyInstr) {
+    // TODO: implement visitCopyInstr
+    throw UnimplementedError();
+  }
+  
+  @override
+  List<AArch64Instr> visitJumpIfNotZeroInstr(JumpIfNotZeroInstr jumpIfNotZeroInstr) {
+    // TODO: implement visitJumpIfNotZeroInstr
+    throw UnimplementedError();
+  }
+  
+  @override
+  List<AArch64Instr> visitJumpIfZeroInstr(JumpIfZeroInstr jumpIfZeroInstr) {
+    // TODO: implement visitJumpIfZeroInstr
+    throw UnimplementedError();
+  }
+  
+  @override
+  List<AArch64Instr> visitJumpInstr(JumpInstr jumpInstr) {
+    // TODO: implement visitJumpInstr
+    throw UnimplementedError();
+  }
+  
+  @override
+  List<AArch64Instr> visitLabelInstr(LabelInstr labelInstr) {
+    // TODO: implement visitLabelInstr
+    throw UnimplementedError();
   }
 }
 

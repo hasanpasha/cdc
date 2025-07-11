@@ -17,23 +17,29 @@ class Options {
   Uri _inputFile = Uri();
 
   bool get isVerbose => _verbose;
-  var _verbose = false;
+  bool _verbose = false;
 
   bool get onlyLex => _onlyLex;
-  var _onlyLex = false;
+  bool _onlyLex = false;
 
   bool get onlyParse => _onlyParse;
-  var _onlyParse = false;
+  bool _onlyParse = false;
+
+  bool get onlyValidate => _onlyValidtae;
+  bool _onlyValidtae = false;
 
   bool get onlyGenTacky => _onlyGenTacky;
-  var _onlyGenTacky = false;
+  bool _onlyGenTacky = false;
 
   bool get onlyGenASM => _onlyGenASM;
-  var _onlyGenASM = false;
+  bool _onlyGenASM = false;
+  
+  bool get preserveAsm => _preserveAsm;
+  bool _preserveAsm = false;
 
   Future parse(List<String> args) async {
     final optDefStr = """
-    |v,verbose|?,h,help|l,lex|p,parse|t,tacky|c,codegen|
+    |verbose|?,h,help|l,lex|p,parse|v,validate|t,tacky|c,codegen|preserve_asm|
     :
     """;
 
@@ -62,12 +68,20 @@ class Options {
       _onlyParse = true;
     }
 
+    if (result.isSet("validate")) {
+      _onlyValidtae = true;
+    }
+
     if (result.isSet("tacky")) {
       _onlyGenTacky = true;
     }
 
     if (result.isSet("codegen")) {
       _onlyGenASM = true;
+    }
+
+    if (result.isSet("preserve_asm")) {
+      _preserveAsm = true;
     }
   }
 
@@ -79,7 +93,13 @@ USAGE:
 ${Options.appName} [OPTIONS]
 
 -?, -h, -[-]help                - this help screen
--v, -[-]verbose                 - detailed log
+-[-]verbose                     - detailed log
+-l, -[-]lex                     - only Lex
+-p, -[-]parse                   - only parse
+-v, -[-]validate                - only validate
+-t, -[-]tacky                   - only generate tacky
+-c, -[-]codegen                 - only generate asm without outputing file
+-[-]preserve_asm                - preserve the generated assembly file
 
 ${(error == null) || error.isEmpty ? '' : "*** ERROR: $error"}
 """);
@@ -121,23 +141,33 @@ Future main(List<String> arguments) async {
     _logger.verbose(programAst.toString());
   }
   if (o.onlyParse) {
-    _logger.out(programAst.prettyTree());
+    _logger.out(programAst.accept(ASTPrettier()));
     exit(0);
   }
 
-  final programIr = TackyIRGenerator.generate(programAst);
+  final analyzedProgramAst = analyze(programAst);
+
+  if (o.onlyValidate) {
+    _logger.out(analyzedProgramAst.accept(ASTPrettier()));
+    exit(0);
+  }
+
+  final programIr = TackyIRGenerator.generate(analyzedProgramAst);
   if (o.isVerbose) {
     _logger.verbose(programIr.toString());
   }
   if (o.onlyGenTacky) {
+    _logger.out(programIr.accept(TackyIrInspector()));
+    _logger.out(programIr.toString());
     exit(0);
   }
 
-  final programAsm = programIr.generateAsm(.aarch64);
+  final programAsm = programIr.generateAsm(.x86_64);
   if (o.isVerbose) { 
     _logger.verbose(programAsm.toString());
   }
   if (o.onlyGenASM) {
+    _logger.out(programAsm.toString());
     _logger.out(programAsm.toString());
     exit(0);
   }
