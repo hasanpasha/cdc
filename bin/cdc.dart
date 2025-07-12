@@ -162,7 +162,7 @@ Future main(List<String> arguments) async {
     exit(0);
   }
 
-  final programAsm = programIr.generateAsm(.x86_64);
+  final programAsm = programIr.generateAsm(.aarch64);
   if (o.isVerbose) { 
     _logger.verbose(programAsm.toString());
   }

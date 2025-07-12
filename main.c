@@ -1,5 +1,6 @@
-int main(void)
-{
-    return -(4 << (2 * 2)) + (100 >> (1 + 2)) << 2;
-    // return -(4 + 5);
+int main(void) {
+    int a = 2147483646;
+    int b = 0;
+    int c = a / 6 + !b;
+    return c * 2 == a - 1431655762;
 }

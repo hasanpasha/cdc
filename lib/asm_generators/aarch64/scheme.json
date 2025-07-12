@@ -8,14 +8,62 @@
         }
     ],
     "scheme": {
+      "AArch64FunctionASM": {
+        "AArch64FunctionASM": {
+          "name": "String",
+          "instructions": "List<AArch64Instr>"
+        }
+      },
       "AArch64Instr": {
         "Move": {"src": "AArch64Operand", "dst": "AArch64Operand"},
+        "MoveZ": {
+          "src": "ImmediateAArch64Operand",
+          "dst": "AArch64Operand",
+          "shift": "int?"
+        },
+        "MoveK": {
+          "src": "ImmediateAArch64Operand",
+          "dst": "AArch64Operand",
+          "shift": "int?"
+        },
         "Unary": {"operator": "AArch64Operator", "operand": "AArch64Operand", "dst": "AArch64Operand"},
         "Binary": {"operator": "AArch64Operator", "lhs": "AArch64Operand", "rhs": "AArch64Operand", "dst": "AArch64Operand"},
         "AllocateStack": {"amount": "int"},
         "DeallocateStack": {"amount": "int"},
         "LoadMemory": {"src": "StackAArch64Operand", "dst": "RegisterAArch64Operand"},
         "StoreMemory": {"src": "RegisterAArch64Operand", "dst": "StackAArch64Operand"},
+        "Cmp": {
+          "lhs": "AArch64Operand",
+          "rhs": "AArch64Operand"
+        },
+        "SetCC": {
+          "code": "AArch64ConditionalCode",
+          "operand": "AArch64Operand"
+        },
+        "SelCC": {
+          "code": "AArch64ConditionalCode",
+          "trueSrc": "AArch64Operand",
+          "falseSrc": "AArch64Operand",
+          "dst": "AArch64Operand"
+        },
+        "Label": {
+          "name": "String"
+        },
+        "Branch": {
+          "label": "String"
+        },
+        "BranchCC": {
+          "code": "AArch64ConditionalCode",
+          "label": "String"
+        },
+        "BranchIfZero": {
+          "operand": "AArch64Operand",
+          "label": "String"
+        },
+        "BranchIfNotZero": {
+          "operand": "AArch64Operand",
+          "label": "String"
+        },
         "Return": {}
       },
       "AArch64Operand": {

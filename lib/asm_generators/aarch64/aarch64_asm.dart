@@ -1,7 +1,9 @@
+import 'dart:collection';
 import 'dart:io';
 
-import 'package:cdc/asm.dart';
 import 'package:cdc/cdc.dart';
+
+import 'package:equatable/equatable.dart';
 
 part 'aarch64_asm.g.dart';
 
@@ -14,7 +16,7 @@ class AArch64ProgramASM implements ProgramASM {
   String emit() => AArch64AsmEmitter.emit(this);
 
   @override
-  String toString() => AArch64AsmPrettier.prettify(this);
+  String toString() => "AArch64ProgramASM($function)";
   
   @override
   Future<void> compile(Uri output, {bool preserveAsmFile = false}) async {
@@ -99,74 +101,50 @@ sub sp, sp, #${allocateStackAArch64Instr.amount}""";
   String visitDeallocateStackAArch64Instr(DeallocateStackAArch64Instr deallocateStackAArch64Instr) => """
 add sp, sp, #${deallocateStackAArch64Instr.amount}
 ldp x29, x30, [sp], #16""";
-}
-
-class AArch64AsmPrettier implements AArch64InstrVisitor<String>, AArch64OperandVisitor<String> {
-  static AArch64AsmPrettier singleton = AArch64AsmPrettier();
-
-  static String prettify(AArch64ProgramASM program) => singleton.visitProgram(program);
-  
-  String visitProgram(AArch64ProgramASM program) =>
-    "AArch64ProgramAsm(${visitFunction(program.function)})";
-    
-  visitFunction(AArch64FunctionASM function) =>
-    "Function(${function.name}, [${function.instructions.map((instr) => instr.accept(this)).join(", ")}])";
-    
-  @override
-  String visitAllocateStackAArch64Instr(AllocateStackAArch64Instr allocateStackAArch64Instr) =>
-    "AllocateStack(${allocateStackAArch64Instr.amount})";
 
   @override
-  String visitBinaryAArch64Instr(BinaryAArch64Instr binaryAArch64Instr) =>
-    "Binary(${binaryAArch64Instr.operator.name}, ${binaryAArch64Instr.dst.accept(this)}"
-    ", ${binaryAArch64Instr.lhs.accept(this)}, ${binaryAArch64Instr.rhs.accept(this)})";
+  String visitBranchCCAArch64Instr(BranchCCAArch64Instr branchCcaArch64Instr) =>
+      "b.${branchCcaArch64Instr.code.name}, .L${branchCcaArch64Instr.label}";
 
   @override
-  String visitImmediateAArch64Operand(ImmediateAArch64Operand immediateAArch64Operand) =>
-    "Immediate(${immediateAArch64Operand.value})";
+  String visitBranchIfNotZeroAArch64Instr(
+    BranchIfNotZeroAArch64Instr branchIfNotZeroAArch64Instr,
+  ) =>
+      "cbnz ${branchIfNotZeroAArch64Instr.operand.accept(this)}, .L${branchIfNotZeroAArch64Instr.label}";
 
   @override
-  String visitMoveAArch64Instr(MoveAArch64Instr moveAArch64Instr) =>
-    "Move(${moveAArch64Instr.dst.accept(this)}, ${moveAArch64Instr.src.accept(this)})";
+  String visitBranchIfZeroAArch64Instr(
+    BranchIfZeroAArch64Instr branchIfZeroAArch64Instr,
+  ) =>
+      "cbz ${branchIfZeroAArch64Instr.operand.accept(this)}, .L${branchIfZeroAArch64Instr.label}";
 
   @override
-  String visitPseudoAArch64Operand(PseudoAArch64Operand pseudoAArch64Operand) =>
-    "Pseudo(${pseudoAArch64Operand.id})";
+  String visitCmpAArch64Instr(CmpAArch64Instr cmpAArch64Instr) =>
+      "cmp ${cmpAArch64Instr.lhs.accept(this)}, ${cmpAArch64Instr.rhs.accept(this)}";
 
   @override
-  String visitRegisterAArch64Operand(RegisterAArch64Operand registerAArch64Operand) =>
-    "Register(${registerAArch64Operand.reg.toString()}, ${registerAArch64Operand.size.name})";
+  String visitSelCCAArch64Instr(SelCCAArch64Instr selCcaArch64Instr) =>
+      "csel ${selCcaArch64Instr.dst.accept(this)}, ${selCcaArch64Instr.trueSrc.accept(this)}, ${selCcaArch64Instr.falseSrc.accept(this)}, ${selCcaArch64Instr.code.name}";
 
   @override
-  String visitReturnAArch64Instr(ReturnAArch64Instr returnAArch64Instr) =>
-    "Return()";
+  String visitSetCCAArch64Instr(SetCCAArch64Instr setCcaArch64Instr) =>
+      "cset ${setCcaArch64Instr.operand.accept(this)}, ${setCcaArch64Instr.code.name}";
+      
+  @override
+  String visitBranchAArch64Instr(BranchAArch64Instr branchAArch64Instr) =>
+      "b .L${branchAArch64Instr.label}";
 
   @override
-  String visitStackAArch64Operand(StackAArch64Operand stackAArch64Operand) =>
-    "Stack(${stackAArch64Operand.value})";
+  String visitLabelAArch64Instr(LabelAArch64Instr labelAArch64Instr) =>
+      ".L${labelAArch64Instr.name}:";
+      
+  @override
+  String visitMoveKAArch64Instr(MoveKAArch64Instr moveKaArch64Instr) =>
+      "movk ${moveKaArch64Instr.dst.accept(this)}, ${moveKaArch64Instr.src.accept(this)}${moveKaArch64Instr.shift != null ? ", lsl ${moveKaArch64Instr.shift!}" : ""}";
 
   @override
-  String visitUnaryAArch64Instr(UnaryAArch64Instr unaryAArch64Instr) =>
-    "Unary(${unaryAArch64Instr.operator.name}, ${unaryAArch64Instr.dst.accept(this)}, ${unaryAArch64Instr.operand.accept(this)})";
-    
-  @override
-  String visitLoadMemoryAArch64Instr(LoadMemoryAArch64Instr loadMemoryAArch64Instr) =>
-    "LoadMemory(${loadMemoryAArch64Instr.dst.accept(this)}, ${loadMemoryAArch64Instr.src.accept(this)})";
-
-  @override
-  String visitStoreMemoryAArch64Instr(StoreMemoryAArch64Instr storeMemoryAArch64Instr) =>
-    "StoreMemory(${storeMemoryAArch64Instr.dst.accept(this)}, ${storeMemoryAArch64Instr.src.accept(this)})";
-    
-  @override
-  String visitDeallocateStackAArch64Instr(DeallocateStackAArch64Instr deallocateStackAArch64Instr) =>
-    "DeallocateStack(${deallocateStackAArch64Instr.amount})";
-}
-
-class AArch64FunctionASM {
-  final String name;
-  final List<AArch64Instr> instructions;
-
-  AArch64FunctionASM(this.name, this.instructions); 
+  String visitMoveZAArch64Instr(MoveZAArch64Instr moveZaArch64Instr) =>
+      "movz ${moveZaArch64Instr.dst.accept(this)}, ${moveZaArch64Instr.src.accept(this)}${moveZaArch64Instr.shift != null ? ", lsl ${moveZaArch64Instr.shift!}" : ""}";
 }
 
 enum AArch64Operator {
@@ -184,6 +162,27 @@ enum AArch64Operator {
   abs,
   neg,
   mvn,
+}
+
+enum AArch64ConditionalCode {
+  eq,
+  ne,
+  cs,
+  hs,
+  cc,
+  lo,
+  mi,
+  pl,
+  vs,
+  vc,
+  hi,
+  ls,
+  ge,
+  lt,
+  gt,
+  le,
+  al,
+  nv,
 }
 
 class AArch64RegisterNumber {
