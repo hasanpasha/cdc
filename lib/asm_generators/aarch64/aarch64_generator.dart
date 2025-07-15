@@ -1,4 +1,3 @@
-import 'dart:async';
 
 import 'package:cdc/asm.dart';
 import 'package:cdc/asm_generator.dart';
