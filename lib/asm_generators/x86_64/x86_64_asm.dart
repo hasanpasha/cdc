@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cdc/cdc.dart';
 import 'package:cdc/asm_generators/x86_64/x86_64_asm_emitter.dart';
 import 'package:equatable/equatable.dart';
@@ -10,18 +12,28 @@ class X8664ProgramASM implements ProgramASM {
   X8664ProgramASM(this.mainFunction);
 
   @override
-  String toString() => "X8664ProgramASM($mainFunction)";
+  String emit() => X8664AsmEmitter.emit(this);
 
   @override
-  String emit() => X8664AsmEmitter.emit(this);
+  Future<void> compile(Uri output, {bool preserveAsmFile = false}) async {
+    final asmOutput = output.replaceExtension('.s');
+    final file = await File(asmOutput.path).create();
+    await file.writeAsString(emit());
+  
+
+    if ((exitCode = await command(Uri.file("/usr/bin/gcc"), [asmOutput.path, '-o', output.path])) != 0) {
+      print("failed compiling file $asmOutput: $exitCode");
+      exit(exitCode);
+    }
+    
+    if (!preserveAsmFile) {
+      await File(asmOutput.path).delete();
+    }
+  }
+
+  @override
+  String toString() => "X8664ProgramASM($mainFunction)";
 }
-
-// class X8664FunctionASM {
-//   final String name;
-//   final List<X8664Instr> instrs;
-
-//   X8664FunctionASM(this.name, this.instrs);
-// }
 
 enum X8664RegisterSize {
   lowByte,
