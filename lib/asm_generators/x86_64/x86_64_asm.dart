@@ -12,7 +12,7 @@ class X8664ProgramASM implements ProgramASM {
   X8664ProgramASM(this.mainFunction);
 
   @override
-  String emit() => X8664AsmEmitter.emit(this);
+  String emit({bool pic = true}) => X8664AsmEmitter.emit(this, pic: pic);
 
   @override
   Future<void> compile(Uri output, {bool preserveAsmFile = false}) async {

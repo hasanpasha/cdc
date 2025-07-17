@@ -26,8 +26,8 @@
             "type": "dart",
             "toolArgs": ["--enable-experiment=dot-shorthands"],
             "args": [
-                "main.c",
-                "--parse"
+                "-s",
+                "main.c"
             ],
         },
         

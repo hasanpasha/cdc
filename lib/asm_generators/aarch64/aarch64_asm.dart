@@ -12,7 +12,7 @@ class AArch64ProgramASM implements ProgramASM {
   AArch64ProgramASM(this.function);
   
   @override
-  String emit() => AArch64AsmEmitter.emit(this);
+  String emit({bool pic = true}) => AArch64AsmEmitter.emit(this, pic: pic);
 
   @override
   String toString() => "AArch64ProgramASM($function)";
@@ -36,7 +36,14 @@ class AArch64ProgramASM implements ProgramASM {
 }
 
 class AArch64AsmEmitter implements AArch64InstrVisitor<String>, AArch64OperandVisitor<String> {
-  static String emit(AArch64ProgramASM aArch64ProgramASM) => AArch64AsmEmitter().visitProgram(aArch64ProgramASM);
+  final bool pic;
+
+  AArch64AsmEmitter({required this.pic});
+
+  static String emit(
+    AArch64ProgramASM aArch64ProgramASM, {
+    required bool pic,
+  }) => AArch64AsmEmitter(pic: pic).visitProgram(aArch64ProgramASM);
   
   String visitProgram(AArch64ProgramASM aArch64ProgramASM) => 
 """

@@ -2,7 +2,11 @@
 import 'package:cdc/asm_generators/x86_64/x86_64_asm.dart';
 
 class X8664AsmEmitter implements X8664FunctionAsmVisitor<String>, X8664InstrVisitor<String>, X8664OperandVisitor<String> {
-  static String emit(X8664ProgramASM program) => X8664AsmEmitter().visitProgram(program);
+  final bool pic;
+
+  X8664AsmEmitter({required this.pic});
+  
+  static String emit(X8664ProgramASM program, {required bool pic}) => X8664AsmEmitter(pic: pic).visitProgram(program);
   
   String visitProgram(X8664ProgramASM x8664programASM) =>
     """

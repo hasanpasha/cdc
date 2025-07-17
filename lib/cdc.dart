@@ -10,3 +10,4 @@ export 'asm_generators.dart';
 export 'extensions.dart';
 export 'semantic_analyzer.dart';
 export 'utils.dart';
+export 'driver.dart';
