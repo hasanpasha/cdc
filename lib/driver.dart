@@ -11,6 +11,14 @@ mixin Deletable {
   Future<void> delete() async => await File(path.path).delete();
 }
 
+extension BatchDelete on List<Deletable> {
+  Future<void> delete() async {
+    for (var file in this) {
+      await file.delete();
+    }
+  }
+}
+
 class CFile {
   final Uri path;
 
@@ -159,6 +167,14 @@ abstract class Linker {
   final String? entry;
 
   const Linker({required this.objects, this.entry, this.linkerScript, required this.shared, required this.freestanding});
+
+  static Linker of(List<ObjectFile> objects, {bool shared = false, bool freestanding = false, Uri? linkerScript}) {
+    if (objects.isEmpty) throw Exception("Can't create a linker for a list of empty objects.");
+    
+    final linker = objects.first.createLinker(shared: shared, freestanding: freestanding, linkerScript: linkerScript);
+    objects.sublist(1).forEach((object) => linker.addObject(object));
+    return linker;
+  } 
 
   void addObject(ObjectFile object);
 

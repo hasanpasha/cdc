@@ -13,7 +13,7 @@ class Options {
   static const appName = "cdc";
   static const appVersion = "0.0.1";
 
-  late final Uri inputFile;
+  late final Set<Uri> inputFiles;
 
   late final bool isVerbose;
   late final bool onlyLex;
@@ -25,15 +25,16 @@ class Options {
   late final bool compileOnly;
   late final bool shared;
   late final Uri? output;
+  late final Arch target;
 
   late final bool compileAndAssemble;
 
   Future parse(List<String> args) async {
     final optDefStr = """
     |verbose|?,h,help|lex|parse|validate|tacky|codegen
-    |s,compile_only|shared|o,output:
+    |s,compile_only|shared|o,output:|t,target:
     |c,compile_assemble|
-    :
+    ::
     """;
 
     final result = parseArgs(optDefStr, args, validate: true);
@@ -42,11 +43,11 @@ class Options {
       usage();
     }
 
-    if (result.getStrValue('') == null) {
+    if (result.getStrValues('').isEmpty) {
       usage("no input.");
     } 
     
-    inputFile = Uri.file(result.getStrValue('')!);
+    inputFiles = result.getStrValues('').map((str) => Uri.file(str)).toSet();
 
     isVerbose = result.isSet('verbose');
     if (isVerbose) {
@@ -61,8 +62,16 @@ class Options {
     
     compileOnly = result.isSet("compile_only");
     shared = result.isSet("shared");
+
     final outputValue = result.getStrValue("output");
     output = (outputValue != null) ?  Uri.file(outputValue) : null;
+
+    final targetValue = result.getStrValue("target");
+    try {
+      target = (targetValue == null) ? .x86_64 : Arch.values.firstWhere((arch) => arch.name == targetValue);
+    } catch (_) {
+      usage("Unknown target arch: $targetValue");
+    }
 
     compileAndAssemble = result.isSet("compile_assemble");
   }
@@ -82,7 +91,9 @@ ${Options.appName} [OPTIONS]
 -[-]tacky                   - only generate tacky
 -[-]codegen                 - only generate asm without outputing file
 -s, -[-]compile_only        - preserve the generated assembly file
--[-]shared                  - creata a shared object 
+-[-]shared                  - create a shared object 
+-t, -[-]target              - compiler target architecture
+                              supported: ${Arch.values.map((arch) => arch.name).join(", ")}
 -c, -[-]compile_assemble    - only generate object file
 ${(error == null) || error.isEmpty ? '' : "\n*** ERROR: $error"}
 """);
@@ -97,62 +108,80 @@ Future main(List<String> arguments) async {
     exit(1);
   }
 
-  final input = CFile(o.inputFile);
-  final cfile = await input.expand();
+  final inputs = o.inputFiles.map((input) => CFile(input));
+  final cFiles = await Future.wait(inputs.map((input) async => await input.expand()));
+
 
   if (o.onlyLex) {
-    final token = await cfile.lex();
-    for (var token in token) {
-      _logger.out("${token.location}: ${token.kind.name} ${token.lexeme}");
+    for (final cfile in cFiles) {
+      final token = await cfile.lex();
+      for (var token in token) {
+        _logger.out("${token.location}: ${token.kind.name} ${token.lexeme}");
+      }
     }
-    await cfile.delete();
+
+    await cFiles.delete();
     exit(0);
   }
 
   if (o.onlyParse) {
-    final ast = await cfile.parse();
-    _logger.out(ast.accept(ASTPrettier()));
-    await cfile.delete();
+    for (final cfile in cFiles) {
+      final ast = await cfile.parse();
+      _logger.out(ast.accept(ASTPrettier()));
+    }
+    
+    await cFiles.delete();
     exit(0);
   }
 
   if (o.onlyValidate) {
-    final ast = await cfile.validate();
-    _logger.out(ast.accept(ASTPrettier()));
-    await cfile.delete();
+    for (final cfile in cFiles) {
+      final ast = await cfile.validate();
+      _logger.out(ast.accept(ASTPrettier()));
+    }
+    
+    await cFiles.delete();
     exit(0);
   }
 
   if (o.onlyGenTacky) {
-    final ir = await cfile.irgen();
-    _logger.out(ir.accept(TackyIrInspector()));
-    await cfile.delete();
+    for (final cfile in cFiles) {
+      final ir = await cfile.irgen();
+      _logger.out(ir.accept(TackyIrInspector()));
+    }
+    
+    await cFiles.delete();
     exit(0);
   }
 
-  final Arch arch = .x86_64;
+  final Arch arch = o.target;
 
   if (o.onlyGenASM) {
-    final asm = await cfile.codegen(arch);
-    _logger.out(asm.toString());
-    await cfile.delete();
+    for (final cfile in cFiles) {
+      final asm = await cfile.codegen(arch);
+      _logger.out(asm.toString());
+    }
+    
+    await cFiles.delete();
     exit(0);
   }
 
-  final asmFile = await cfile.emitAsmFile(arch);
-  await cfile.delete();
+  final asmFiles = await Future.wait(cFiles.map((cfile) => cfile.emitAsmFile(arch)));
+  await cFiles.delete();
+  
   if (o.compileOnly) {
     exit(0);
   }
 
-  final objectFile = await asmFile.compile();
-  await asmFile.delete();
+  final objectFiles = await Future.wait(asmFiles.map((asmFile) => asmFile.compile()));
+  await asmFiles.delete();
   if (o.compileAndAssemble) {
     exit(0);
   }
 
-  final linker = objectFile.createLinker(shared: o.shared);
-  final outputPath = o.output ?? o.inputFile.replaceExtension('');
+  final linker = Linker.of(objectFiles, shared: o.shared);
+
+  final outputPath = o.output ?? o.inputFiles.first.replaceExtension('');
   final _ = await linker.link(output: outputPath);
-  await objectFile.delete();
+  await objectFiles.delete();
 }
