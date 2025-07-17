@@ -23,12 +23,16 @@ class Options {
   late final bool onlyGenASM;
 
   late final bool compileOnly;
+  late final bool shared;
+  late final Uri? output;
+
   late final bool compileAndAssemble;
 
   Future parse(List<String> args) async {
     final optDefStr = """
     |verbose|?,h,help|lex|parse|validate|tacky|codegen
-    |s,compile_only|c,compile_assemble|
+    |s,compile_only|shared|o,output:
+    |c,compile_assemble|
     :
     """;
 
@@ -54,7 +58,12 @@ class Options {
     onlyValidate = result.isSet("validate");
     onlyGenTacky = result.isSet("tacky");
     onlyGenASM = result.isSet("codegen");
+    
     compileOnly = result.isSet("compile_only");
+    shared = result.isSet("shared");
+    final outputValue = result.getStrValue("output");
+    output = (outputValue != null) ?  Uri.file(outputValue) : null;
+
     compileAndAssemble = result.isSet("compile_assemble");
   }
 
@@ -73,6 +82,7 @@ ${Options.appName} [OPTIONS]
 -[-]tacky                   - only generate tacky
 -[-]codegen                 - only generate asm without outputing file
 -s, -[-]compile_only        - preserve the generated assembly file
+-[-]shared                  - creata a shared object 
 -c, -[-]compile_assemble    - only generate object file
 ${(error == null) || error.isEmpty ? '' : "\n*** ERROR: $error"}
 """);
@@ -141,7 +151,8 @@ Future main(List<String> arguments) async {
     exit(0);
   }
 
-  final linker = objectFile.createLinker();
-  final _ = await linker.link(output: o.inputFile.replaceExtension(''));
+  final linker = objectFile.createLinker(shared: o.shared);
+  final outputPath = o.output ?? o.inputFile.replaceExtension('');
+  final _ = await linker.link(output: outputPath);
   await objectFile.delete();
 }
