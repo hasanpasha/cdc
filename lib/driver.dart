@@ -24,7 +24,7 @@ class CFile {
 
   const CFile(this.path); 
 
-  Future<ExpandedCFile> expand([Uri? output, Map<String, String>? defines]) async {
+  Future<TranslationUnitFile> expand([Uri? output, Map<String, String>? defines]) async {
     
     final outputPath = output ?? path.replaceExtension('.cc');
 
@@ -34,15 +34,15 @@ class CFile {
       exit(result);
     }
 
-    return ExpandedCFile(outputPath);
+    return TranslationUnitFile(outputPath);
   }
 }
 
-class ExpandedCFile with Deletable {
+class TranslationUnitFile with Deletable {
   @override
   final Uri path;
 
-  const ExpandedCFile(this.path);
+  const TranslationUnitFile(this.path);
 
   Future<List<Token>> lex() async {
     final source = await File(path.path).readAsString();
