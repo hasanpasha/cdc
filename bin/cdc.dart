@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:parse_args/parse_args.dart';
@@ -127,7 +128,7 @@ Future main(List<String> arguments) async {
   if (o.onlyParse) {
     for (final cfile in cFiles) {
       final ast = await cfile.parse();
-      _logger.out(ast.accept(ASTPrettier()));
+      _logger.out(prettifier(ast, lines: true));
     }
     
     await cFiles.delete();
@@ -137,7 +138,7 @@ Future main(List<String> arguments) async {
   if (o.onlyValidate) {
     for (final cfile in cFiles) {
       final ast = await cfile.validate();
-      _logger.out(ast.accept(ASTPrettier()));
+      _logger.out(prettifier(ast, lines: true));
     }
     
     await cFiles.delete();

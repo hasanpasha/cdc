@@ -8,14 +8,15 @@
         }
     ],
     "scheme": {
-        "ProgramIR": {
-            "ProgramIR": {
-                "functionDefinition": "FunctionIR"
+        "ProgramTir": {
+            "ProgramTir": {
+                "functions": "List<FunctionTir>"
             }
         },
-        "FunctionIR": {
-            "FunctionIR": {
+        "FunctionTir": {
+            "FunctionTir": {
                 "name": "String",
+                "params": "List<String>",
                 "instructions": "List<Instr>"
             }
         },
@@ -51,6 +52,11 @@
             },
             "Label": {
                 "value": "String"
+            },
+            "FunCall": {
+                "name": "String",
+                "args": "List<Value>",
+                "dst": "Value"
             }
         },
         "Value": {

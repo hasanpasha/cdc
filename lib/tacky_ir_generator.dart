@@ -4,13 +4,12 @@ import 'package:cdc/tacky_ir.dart';
 import 'package:cdc/token.dart';
 
 class TackyIRGenerator implements 
-  ProgramAstVisitor<ProgramIR>,
-  FunctionAstVisitor<FunctionIR>,
+  ProgramAstVisitor<ProgramTir>,
+  DeclVisitor<(FunctionTir?, List<Instr>)>,
   BlockVisitor<List<Instr>>,
   StmtVisitor<List<Instr>>,
   ForInitVisitor<List<Instr>>,
   ExprVisitor<(Value, List<Instr>)>,
-  DeclVisitor<List<Instr>>,
   BlockItemVisitor<List<Instr>> {
   
   int _tmpCount = 0;
@@ -19,22 +18,28 @@ class TackyIRGenerator implements
 
   TackyIRGenerator();
 
-  static ProgramIR generate(ProgramAst program) => 
-    program.accept(TackyIRGenerator());
+  static ProgramTir generate(ProgramAst program) => program.accept(TackyIRGenerator());
   
   @override
-  ProgramIR visitProgramAst(ProgramAst program) {
-    final functionDefinition = program.main.accept(this);
-    
-    return ProgramIR(functionDefinition);
-  }
+  ProgramTir visitProgramAst(ProgramAst program) => ProgramTir(program.functions
+      .map((func) => func.accept(this)
+        .$1
+        ?..instructions.add(ReturnInstr(ConstantValue('0')))
+      )
+      .nonNulls
+      .toList()
+    );
 
   @override
-  FunctionIR visitFunctionAst(FunctionAst function) => FunctionIR(
-      function.name.lexeme,
-      function.body.accept(this)
-        ..add(ReturnInstr(ConstantValue('0')))
-    );
+  (FunctionTir?, List<Instr>) visitFunctionDecl(FunctionDecl function) => 
+    (function.body != null 
+      ? FunctionTir(
+        function.name.lexeme, 
+        function.params.map((param) => param.lexeme).toList(), 
+        function.body!.accept(this)
+      ) 
+      : null,
+    []);
 
   @override
   List<Instr> visitBlock(Block block) => 
@@ -172,7 +177,7 @@ class TackyIRGenerator implements
   }
   
   String _makeLabel(String prefix) {
-    final name = "$prefix${_labelCount++}";
+    final name = "tacky.$prefix${_labelCount++}";
     return name;
   }
   
@@ -215,7 +220,7 @@ class TackyIRGenerator implements
   
   @override
   List<Instr> visitDeclBlockItem(DeclBlockItem declBlockItem) => 
-    declBlockItem.decl.accept(this);
+    declBlockItem.decl.accept(this).$2;
   
   @override
   List<Instr> visitExpressionStmt(ExpressionStmt expressionStmt) => 
@@ -233,9 +238,9 @@ class TackyIRGenerator implements
     (VariableValue(varExpr.identifier.lexeme), []);
   
   @override
-  List<Instr> visitVariableDecl(VariableDecl variableDecl) => 
-    variableDecl.init?.accept(this)
-      .map((value) => CopyInstr(value, VariableValue(variableDecl.name.lexeme))) ?? [];
+  (FunctionTir?, List<Instr>) visitVariableDecl(VariableDecl variableDecl) => 
+    (null, variableDecl.init?.accept(this)
+      .map((value) => CopyInstr(value, VariableValue(variableDecl.name.lexeme))) ?? []);
   
   @override
   List<Instr> visitIfStmt(IfStmt ifStmt) {
@@ -330,7 +335,7 @@ class TackyIRGenerator implements
 
   @override
   List<Instr> visitInitDeclForInit(InitDeclForInit initDeclForInit) => 
-    initDeclForInit.decl.accept(this);
+    initDeclForInit.decl.accept(this).$2;
 
   @override
   List<Instr> visitInitExpForInit(InitExpForInit initExpForInit) => initExpForInit.expr?.accept(this).$2 ?? [];
@@ -355,13 +360,25 @@ class TackyIRGenerator implements
     return [
       ...switchValueInstrs,
       ...switchStmt.cases.map((case$) => [
-        case$.expr.accept(this).mapInstrs((value) => [BinaryInstr(.equal, switchValue, value, tmp), JumpIfNotZeroInstr(tmp, case$.label)]),
+        case$.expr.accept(this)
+          .mapInstrs((value) => [BinaryInstr(.equal, switchValue, value, tmp), JumpIfNotZeroInstr(tmp, case$.label)]),
       ]).expand((e) => e).expand((e) => e),
       if (switchStmt.defaultCase != null) JumpInstr(switchStmt.defaultCase!.label),
       JumpInstr(breakLabel(switchStmt.label)),
       ...switchStmt.body.accept(this),
       LabelInstr(breakLabel(switchStmt.label))
     ];
+  }
+  
+  @override
+  (Value, List<Instr>) visitFunctionCallExpr(FunctionCallExpr functionCallExpr) {
+    final dst = _makeTempVariable();
+
+    final args = functionCallExpr.args?.map((arg) => arg.accept(this)).toList() ?? [];
+    return (dst, [
+      ...args.map((arg) => arg.$2).expand((e) => e),
+      FunCallInstr(functionCallExpr.identifier.lexeme, args.map((arg) => arg.$1).toList(), dst)
+    ]);
   }
 }
 

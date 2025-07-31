@@ -65,6 +65,7 @@ class Lexer extends Iterable<Token> {
         '!' => _match('=') ? .bangEqual : .bang,
         '?' => .questionMark,
         ':' => .colon,
+        ',' => .comma,
         String() => .error,
       };
 

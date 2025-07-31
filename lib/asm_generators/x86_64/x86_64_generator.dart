@@ -1,14 +1,16 @@
 
+import 'dart:math';
+
 import 'package:cdc/cdc.dart';
 
 import 'x86_64_asm.dart';
 
-class X8664Generator implements AsmGenerator, ProgramIRVisitor<X8664ProgramASM>, FunctionIRVisitor<X8664FunctionAsm>, InstrVisitor<void>, ValueVisitor<X8664Operand> {
+class X8664Generator implements AsmGenerator, ProgramTirVisitor<X8664ProgramASM>, FunctionTirVisitor<X8664FunctionAsm>, InstrVisitor<void>, ValueVisitor<X8664Operand> {
   List<X8664Instr> _instrs = [];
   
 // TODO: refactor
   @override
-  ProgramASM generate(ProgramIR program) {
+  ProgramASM generate(ProgramTir program) {
     var asmProgram = program.accept(this);
 
     asmProgram = PseudoEliminator.transform(asmProgram);
@@ -20,23 +22,41 @@ class X8664Generator implements AsmGenerator, ProgramIRVisitor<X8664ProgramASM>,
   }
 
   @override
-  X8664ProgramASM visitProgramIR(ProgramIR program) {
-    return X8664ProgramASM(program.functionDefinition.accept(this));
+  X8664ProgramASM visitProgramTir(ProgramTir program) {
+    return X8664ProgramASM(program.functions.map((func) => func.accept(this)).toList());
   }
 
   @override
-  X8664FunctionAsm visitFunctionIR(FunctionIR function) {
+  X8664FunctionAsm visitFunctionTir(FunctionTir function) {
     final current = _instrs;
 
     try {
       final newInstrs = <X8664Instr>[];
       _instrs = newInstrs;
+
+      final regs = <X8664Register>[.di, .si, .dx, .cx, .r8, .r9];
+      final params = function.params;
+      final registerParams = params.sublist(0, min(regs.length, params.length));
+      final stackParams = params.sublist(params.length > regs.length ? regs.length : params.length);
+
+      _instrs.add(CommentX8664Instr("save register params"));
+      for (final (index, param) in registerParams.indexed) {
+        _instrs.add(CommentX8664Instr(param));
+        _instrs.add(MoveX8664Instr(RegisterX8664Operand(regs[index], .word), PseudoX8664Operand(param)));
+      }
+
+      _instrs.add(CommentX8664Instr("save stack params"));
+      for (final (index, param) in stackParams.indexed) {
+        _instrs.add(CommentX8664Instr(param));
+        _instrs.add(MoveX8664Instr(StackX8664Operand(16+(index*8)), PseudoX8664Operand(param)));
+      }
+
       
       for (var instr in function.instructions) {
         instr.accept(this);
       }
       
-      return X8664FunctionAsm(function.name, newInstrs);
+      return X8664FunctionAsm(function.name, newInstrs, 0);
     } finally {
       _instrs = current;
     }
@@ -68,8 +88,8 @@ class X8664Generator implements AsmGenerator, ProgramIRVisitor<X8664ProgramASM>,
           BinaryX8664Instr(operatpr, rhs, dst),
         ]);
       case .divide || .remainder:
-        final eax = RegisterX8664Operand(.xa, .word);
-        final edx = RegisterX8664Operand(.xd, .word);
+        final eax = RegisterX8664Operand(.ax, .word);
+        final edx = RegisterX8664Operand(.dx, .word);
         _instrs.addAll([
           MoveX8664Instr(lhs, eax),
           CdqX8664Instr(),
@@ -97,7 +117,7 @@ class X8664Generator implements AsmGenerator, ProgramIRVisitor<X8664ProgramASM>,
   @override
   void visitReturnInstr(ReturnInstr returnInstr) {
     _instrs.addAll([
-      MoveX8664Instr(returnInstr.value.accept(this), RegisterX8664Operand(.xa, .word)),
+      MoveX8664Instr(returnInstr.value.accept(this), RegisterX8664Operand(.ax, .word)),
       ReturnX8664Instr(),
     ]);
   }
@@ -163,17 +183,67 @@ class X8664Generator implements AsmGenerator, ProgramIRVisitor<X8664ProgramASM>,
   @override
   void visitLabelInstr(LabelInstr labelInstr) => 
     _instrs.add(LabelX8664Instr(labelInstr.value));
+    
+  @override
+  void visitFunCallInstr(FunCallInstr funCallInstr) {
+    _instrs.add(CommentX8664Instr("start call to `${funCallInstr.name}`"));
+
+    final argRegs = <X8664Register>[.di, .si, .dx, .cx, .r8, .r9];
+    final args = funCallInstr.args.map((arg) => arg.accept(this)).toList();
+    final registerArgs = args.sublist(0, min(argRegs.length, args.length));
+    final stackArgs = args.sublist(args.length > argRegs.length ? argRegs.length : args.length);
+
+    final int stackPadding = stackArgs.length.isOdd ? 8 : 0;
+    if (stackPadding != 0) {
+      _instrs.add(AllocateStackX8664Instr(stackPadding));
+    }
+
+    _instrs.add(CommentX8664Instr("push register args"));
+    for (final (index, arg) in registerArgs.indexed) {
+      _instrs.add(MoveX8664Instr(arg, RegisterX8664Operand(argRegs[index], .word)));
+    }
+
+    _instrs.add(CommentX8664Instr("push stack args"));
+    for (final arg in stackArgs.reversed) {
+      if (arg is RegisterX8664Operand || arg is ImmediateX8664Operand) {
+        _instrs.add(PushX8664Instr(arg));
+      } else {
+        final ebx = RegisterX8664Operand(.bx, .word);
+        final rbx = RegisterX8664Operand(.bx, .quadWord);
+        _instrs.addAll([
+          MoveX8664Instr(arg, ebx),
+          PushX8664Instr(rbx),
+        ]);
+      }
+    }
+
+    _instrs.add(CallX8664Instr(funCallInstr.name));
+
+    final bytesToRemove = 8 * stackArgs.length + stackPadding;
+    if (bytesToRemove != 0) {
+      _instrs.add(DeallocateStackX8664Instr(bytesToRemove));
+    }
+
+    _instrs.add(CommentX8664Instr("save return value"));
+    final dst = funCallInstr.dst.accept(this);
+    _instrs.add(MoveX8664Instr(RegisterX8664Operand(.ax, .word), dst));
+  
+    _instrs.add(CommentX8664Instr("done call to `${funCallInstr.name}`"));
+  }
 }
 
 // TODO: move asm passes to separate files
-class InstructionsFixer implements X8664InstrVisitor<List<X8664Instr>> {
+class InstructionsFixer implements X8664FunctionAsmVisitor<X8664FunctionAsm>, X8664InstrVisitor<List<X8664Instr>> {
   static X8664ProgramASM transform(X8664ProgramASM asmProgram) => InstructionsFixer().visitProgram(asmProgram);
   
-  X8664ProgramASM visitProgram(X8664ProgramASM asmProgram) => X8664ProgramASM(visitFunction(asmProgram.mainFunction));
+  X8664ProgramASM visitProgram(X8664ProgramASM asmProgram) => X8664ProgramASM(asmProgram.functions.map((func) => func.accept(this)).toList());
   
-  X8664FunctionAsm visitFunction(X8664FunctionAsm function) {
-    final newInstrs = function.instrs.map((instr) => instr.accept(this)).expand((instrs) => instrs).toList();
-    return X8664FunctionAsm(function.name, newInstrs);
+  @override
+  X8664FunctionAsm visitX8664FunctionAsm(X8664FunctionAsm function) {
+    final alignedStackSpace = (function.allocatedStackSize + 15) & ~15; 
+    final newInstrs = function.instrs.map((instr) => instr.accept(this)).expand((instrs) => instrs).toList()
+      ..insert(0, AllocateStackX8664Instr(alignedStackSpace));
+    return X8664FunctionAsm(function.name, newInstrs, alignedStackSpace);
   }
   
   @override
@@ -193,8 +263,8 @@ class InstructionsFixer implements X8664InstrVisitor<List<X8664Instr>> {
       ];
     } if (<X8664BinaryOperator>[.sal, .shl, .sar, .shr].contains(binaryX8664Instr.operator)) {
       return [
-        MoveX8664Instr(binaryX8664Instr.lhs, RegisterX8664Operand(.xc, .word)),
-        BinaryX8664Instr(binaryX8664Instr.operator, RegisterX8664Operand(.xc, .lowByte), binaryX8664Instr.rhs),
+        MoveX8664Instr(binaryX8664Instr.lhs, RegisterX8664Operand(.cx, .word)),
+        BinaryX8664Instr(binaryX8664Instr.operator, RegisterX8664Operand(.cx, .lowByte), binaryX8664Instr.rhs),
       ];
     } else if (binaryX8664Instr.lhs is StackX8664Operand && binaryX8664Instr.rhs is StackX8664Operand) {
       final r10d = RegisterX8664Operand(.r10, .word);
@@ -210,7 +280,7 @@ class InstructionsFixer implements X8664InstrVisitor<List<X8664Instr>> {
   @override
   List<X8664Instr> visitMoveX8664Instr(MoveX8664Instr moveX8664Instr) {
     if (moveX8664Instr.src is StackX8664Operand && moveX8664Instr.dst is StackX8664Operand) {
-      final ebx = RegisterX8664Operand(.xb, .word);
+      final ebx = RegisterX8664Operand(.bx, .word);
       return [
         MoveX8664Instr(moveX8664Instr.src, ebx),
         MoveX8664Instr(ebx, moveX8664Instr.dst),
@@ -270,22 +340,36 @@ class InstructionsFixer implements X8664InstrVisitor<List<X8664Instr>> {
   
   @override
   List<X8664Instr> visitSetCCX8664Instr(SetCCX8664Instr setCcx8664Instr) => [setCcx8664Instr];
+  
+  @override
+  List<X8664Instr> visitCallX8664Instr(CallX8664Instr callX8664Instr) => [callX8664Instr];
+  
+  @override
+  List<X8664Instr> visitDeallocateStackX8664Instr(DeallocateStackX8664Instr deallocateStackX8664Instr) =>
+    [deallocateStackX8664Instr];
+  
+  @override
+  List<X8664Instr> visitPushX8664Instr(PushX8664Instr pushX8664Instr) => [pushX8664Instr];
+  
+  @override
+  List<X8664Instr> visitCommentX8664Instr(CommentX8664Instr commentX8664Instr) => [commentX8664Instr];
 }
 
-class PseudoEliminator implements X8664InstrVisitor<X8664Instr>, X8664OperandVisitor<X8664Operand> {
+class PseudoEliminator implements X8664FunctionAsmVisitor<X8664FunctionAsm>, X8664InstrVisitor<X8664Instr>, X8664OperandVisitor<X8664Operand> {
   final Map<String, int> _variablesOffset = {};
   int _stackOffset = 0;
 
   static X8664ProgramASM transform(X8664ProgramASM asmProgram) => PseudoEliminator().visitProgram(asmProgram);
   
   X8664ProgramASM visitProgram(X8664ProgramASM asmProgram) =>
-    X8664ProgramASM(visitFunction(asmProgram.mainFunction));
+    X8664ProgramASM(asmProgram.functions.map((func) => func.accept(this)).toList());
   
   
-  X8664FunctionAsm visitFunction(X8664FunctionAsm function) {
-    final newInstrs = function.instrs.map((instr) => instr.accept(this)).toList()
-      ..insert(0, AllocateStackX8664Instr(_stackOffset));
-    return X8664FunctionAsm(function.name, newInstrs);
+  @override
+  X8664FunctionAsm visitX8664FunctionAsm(X8664FunctionAsm function) {
+    _stackOffset = 0;
+    final newInstrs = function.instrs.map((instr) => instr.accept(this)).toList();
+    return X8664FunctionAsm(function.name, newInstrs, _stackOffset);
   }
   
   @override
@@ -304,11 +388,11 @@ class PseudoEliminator implements X8664InstrVisitor<X8664Instr>, X8664OperandVis
   
   @override
   X8664Operand visitPseudoX8664Operand(PseudoX8664Operand pseudoX8664Operand) => 
-    StackX8664Operand(_variablesOffset[pseudoX8664Operand.id] ?? (() {
+    StackX8664Operand(-(_variablesOffset[pseudoX8664Operand.id] ?? (() {
       _stackOffset += 4;
       _variablesOffset[pseudoX8664Operand.id] = _stackOffset;
       return _stackOffset;
-    })());
+    })()));
   
   @override
   X8664Operand visitRegisterX8664Operand(RegisterX8664Operand registerX8664Operand) => registerX8664Operand;
@@ -346,4 +430,19 @@ class PseudoEliminator implements X8664InstrVisitor<X8664Instr>, X8664OperandVis
   @override
   X8664Instr visitSetCCX8664Instr(SetCCX8664Instr setCcx8664Instr) =>
     SetCCX8664Instr(setCcx8664Instr.condCode, setCcx8664Instr.operand.accept(this));
+    
+  @override
+  X8664Instr visitCallX8664Instr(CallX8664Instr callX8664Instr) => 
+    callX8664Instr;
+
+  @override
+  X8664Instr visitDeallocateStackX8664Instr(DeallocateStackX8664Instr deallocateStackX8664Instr) => 
+    deallocateStackX8664Instr;
+
+  @override
+  X8664Instr visitPushX8664Instr(PushX8664Instr pushX8664Instr) => 
+    PushX8664Instr(pushX8664Instr.operand.accept(this));
+    
+  @override
+  X8664Instr visitCommentX8664Instr(CommentX8664Instr commentX8664Instr) => commentX8664Instr;
 }

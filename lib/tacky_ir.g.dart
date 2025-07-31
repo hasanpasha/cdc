@@ -1,45 +1,47 @@
 part of 'tacky_ir.dart';
 
-class ProgramIR with EquatableMixin {
-  ProgramIR(this.functionDefinition);
+class ProgramTir with EquatableMixin {
+  ProgramTir(this.functions);
 
-  final FunctionIR functionDefinition;
+  final List<FunctionTir> functions;
 
   @override
-  List<Object?> get props => [functionDefinition];
+  List<Object?> get props => [functions];
 
   @override
   bool? get stringify => true;
 
-  R accept<R>(ProgramIRVisitor<R> visitor) {
-    return visitor.visitProgramIR(this);
+  R accept<R>(ProgramTirVisitor<R> visitor) {
+    return visitor.visitProgramTir(this);
   }
 }
 
-abstract class ProgramIRVisitor<R> {
-  R visitProgramIR(ProgramIR programIr);
+abstract class ProgramTirVisitor<R> {
+  R visitProgramTir(ProgramTir programTir);
 }
 
-class FunctionIR with EquatableMixin {
-  FunctionIR(this.name, this.instructions);
+class FunctionTir with EquatableMixin {
+  FunctionTir(this.name, this.params, this.instructions);
 
   final String name;
+
+  final List<String> params;
 
   final List<Instr> instructions;
 
   @override
-  List<Object?> get props => [name, instructions];
+  List<Object?> get props => [name, params, instructions];
 
   @override
   bool? get stringify => true;
 
-  R accept<R>(FunctionIRVisitor<R> visitor) {
-    return visitor.visitFunctionIR(this);
+  R accept<R>(FunctionTirVisitor<R> visitor) {
+    return visitor.visitFunctionTir(this);
   }
 }
 
-abstract class FunctionIRVisitor<R> {
-  R visitFunctionIR(FunctionIR functionIr);
+abstract class FunctionTirVisitor<R> {
+  R visitFunctionTir(FunctionTir functionTir);
 }
 
 abstract class Instr {
@@ -57,6 +59,7 @@ abstract class InstrVisitor<R> {
   R visitJumpIfZeroInstr(JumpIfZeroInstr jumpIfZeroInstr);
   R visitJumpIfNotZeroInstr(JumpIfNotZeroInstr jumpIfNotZeroInstr);
   R visitLabelInstr(LabelInstr labelInstr);
+  R visitFunCallInstr(FunCallInstr funCallInstr);
 }
 
 class ReturnInstr extends Instr with EquatableMixin {
@@ -208,6 +211,27 @@ class LabelInstr extends Instr with EquatableMixin {
   @override
   R accept<R>(InstrVisitor<R> visitor) {
     return visitor.visitLabelInstr(this);
+  }
+}
+
+class FunCallInstr extends Instr with EquatableMixin {
+  FunCallInstr(this.name, this.args, this.dst);
+
+  final String name;
+
+  final List<Value> args;
+
+  final Value dst;
+
+  @override
+  List<Object?> get props => [name, args, dst];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(InstrVisitor<R> visitor) {
+    return visitor.visitFunCallInstr(this);
   }
 }
 

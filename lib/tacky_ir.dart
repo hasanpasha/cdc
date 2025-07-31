@@ -25,8 +25,8 @@ enum BinaryOperator {
 
 class TackyIrInspector
     implements
-        ProgramIRVisitor<String>,
-        FunctionIRVisitor<String>,
+        ProgramTirVisitor<String>,
+        FunctionTirVisitor<String>,
         InstrVisitor<String>,
         ValueVisitor<String> {
   @override
@@ -41,17 +41,17 @@ class TackyIrInspector
       "${copyInstr.dst.accept(this)} = ${copyInstr.src.accept(this)}";
 
   @override
-  String visitFunctionIR(FunctionIR functionIr) =>
-      "func ${functionIr.name}>\n"
-      "${functionIr.instructions.map((instr) => instr.accept(this)).join("\n")}";
+  String visitFunctionTir(FunctionTir functionIr) =>
+      "func ${functionIr.name}(${functionIr.params.join(", ")}):\n"
+      "  ${functionIr.instructions.map((instr) => instr.accept(this)).join("\n  ")}";
 
   @override
   String visitJumpIfNotZeroInstr(JumpIfNotZeroInstr jumpIfNotZeroInstr) =>
-      "jump-if-not-zero ${jumpIfNotZeroInstr.condition.accept(this)}, ${jumpIfNotZeroInstr.target}";
+      "jump_if_not_zero ${jumpIfNotZeroInstr.condition.accept(this)}, ${jumpIfNotZeroInstr.target}";
 
   @override
   String visitJumpIfZeroInstr(JumpIfZeroInstr jumpIfZeroInstr) =>
-      "jump-if-zero ${jumpIfZeroInstr.condition.accept(this)}, ${jumpIfZeroInstr.target}";
+      "jump_if_zero ${jumpIfZeroInstr.condition.accept(this)}, ${jumpIfZeroInstr.target}";
 
   @override
   String visitJumpInstr(JumpInstr jumpInstr) => "jump ${jumpInstr.target}";
@@ -60,8 +60,8 @@ class TackyIrInspector
   String visitLabelInstr(LabelInstr labelInstr) => "${labelInstr.value}:";
 
   @override
-  String visitProgramIR(ProgramIR programIr) =>
-      programIr.functionDefinition.accept(this);
+  String visitProgramTir(ProgramTir programIr) =>
+      programIr.functions.map((func) => func.accept(this)).join("\n");
 
   @override
   String visitReturnInstr(ReturnInstr returnInstr) =>
@@ -73,6 +73,10 @@ class TackyIrInspector
 
   @override
   String visitVariableValue(VariableValue variableValue) => variableValue.name;
+  
+  @override
+  String visitFunCallInstr(FunCallInstr funCallInstr) => 
+    "${funCallInstr.dst.accept(this)} = ${funCallInstr.name}(${funCallInstr.args.map((arg) => arg.accept(this)).join(", ")})";
 }
 
 extension on BinaryOperator {

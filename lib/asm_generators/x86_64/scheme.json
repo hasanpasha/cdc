@@ -11,10 +11,14 @@
       "X8664FunctionAsm": {
         "X8664FunctionAsm": {
           "name": "String",
-          "instrs": "List<X8664Instr>"
+          "instrs": "List<X8664Instr>",
+          "allocatedStackSize": "int"
         }
       },
       "X8664Instr": {
+        "Comment": {
+          "msg": "String"
+        },
         "Move": {
           "src": "X8664Operand",
           "dst": "X8664Operand"
@@ -50,6 +54,15 @@
         },
         "AllocateStack": {
           "amount": "int"
+        },
+        "DeallocateStack": {
+          "amount": "int"
+        },
+        "Push": {
+          "operand": "X8664Operand"
+        },
+        "Call": {
+          "identifier": "String"
         },
         "Return": {}
       },

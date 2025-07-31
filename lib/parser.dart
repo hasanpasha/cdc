@@ -23,9 +23,8 @@ enum Precedence {
     return index <= other.index;
   }
 
-  Precedence operator +(int offset) {
-    return values.firstWhere((precedence) => precedence.index == index+offset);
-  }
+  Precedence get oneHigher =>
+    values.firstWhere((precedence) => precedence.index == index+1);
 }
 
 class PrecedenceRule {
@@ -61,32 +60,37 @@ class LexerError extends SyntaxError {
   LexerError(this.errors): super(errors.first, "lexer error");
 }
 
+class EnvironmentTableEntry {
+ final String uniqueName;
+ final bool hasLinkage;
+
+ EnvironmentTableEntry({required this.uniqueName, required this.hasLinkage}); 
+}
+
 class Environment {
-  final Map<String, String> symbols = {};
-  final Environment? enclosing;
+  final Map<String, EnvironmentTableEntry> _symbols = {};
+  final Environment? _enclosing;
 
-  Environment([this.enclosing]);
+  Environment([this._enclosing]);
   
-  bool isDefined(String identifier) {
-    if (isDefinedInCurScope(identifier)) return true;
-    return enclosing?.isDefined(identifier) ?? false;
+  bool get isTopLevel => _enclosing == null;
+  
+  bool isDeclared(String identifier) {
+    if (isDeclaredInCurScope(identifier)) return true;
+    return _enclosing?.isDeclared(identifier) ?? false;
   }
 
-  bool isDefinedInCurScope(String identifier) => symbols.containsKey(identifier);
+  bool isDeclaredInCurScope(String identifier) => _symbols.containsKey(identifier);
   
-  String get(String identifier) {
-    if (!isDefined(identifier)) {
-      throw Exception("`$identifier` has not been defined.");
-    }
-    return symbols[identifier] ?? enclosing!.get(identifier);
+  String? get(String identifier) {
+    return _symbols[identifier]?.uniqueName ?? _enclosing?.get(identifier);
   }
   
-  void define(String identifier, String uniqueName) {
-    if (symbols.containsKey(identifier)) {
-      throw Exception("`$identifier` is already defined in the current scope.");
-    }
-    symbols[identifier] = uniqueName;
+  void declare({required String identifier, required String uniqueName, bool hasLinkage = false}) {
+    _symbols[identifier] = EnvironmentTableEntry(uniqueName: uniqueName, hasLinkage: hasLinkage);
   }
+  
+  bool hasLinkage(String identifier) => _symbols[identifier]?.hasLinkage ?? false; 
 }
 
 
@@ -98,7 +102,7 @@ class Parser {
   int _varCount = 0;
   final List<(Location, String)> issues = [];
 
-  static ProgramAst parse(List<Token> tokens, { bool constantFold = false }) {
+  static ProgramAst parse(List<Token> tokens) {
     final parser = Parser(tokens);
 
     var program = parser.parseProgram();
@@ -106,10 +110,6 @@ class Parser {
     if (parser.issues.isNotEmpty) {
       throw MultiIssues(parser.issues);
     }
-    
-    // if (constantFold) {
-    //   program = ConstantFolder.transform(program);
-    // }
 
     return program;
   }
@@ -117,29 +117,21 @@ class Parser {
   Parser(this.tokens);
 
   ProgramAst parseProgram() {
-    final FunctionAst function = _function();
-    _consume(.eoi, "Expect end of input.");
-    
-    return ProgramAst(function);
-  }
-  
-  FunctionAst _function() {
-    _consume(.int, "Expect `int` at start of function.");
-    final name = _consume(.identifier, "Expect identifier name for function definition.");
-    _consume(.leftParen, "Expect a '(' at start of parameters list.");
-    _consume(.void$, "Expect `void` as argument.");
-    _consume(.rightParen, "Expect ')' closing parameters list.");
-    Block body = _block();
 
-    return FunctionAst(name, body);
+    final functions = <FunctionDecl>[];
+    while (!_match(.eoi)) {
+      functions.add(_functionDecl());
+    }
+
+    return ProgramAst(functions);
   }
 
-  Block _block() {
+  Block _block([Environment? env]) {
     final blockToken = _consume(.leftBraces, "Expect '{' opening a function body.");
     
     bool hadError = false;
     final List<BlockItem> body = [];
-    environment = Environment(environment);
+    environment = env ?? Environment(environment);
     while (!_isAtEnd && _peek().kind != .rightBraces) {
       try {
         body.add(blockItem());
@@ -155,7 +147,7 @@ class Parser {
         _synchronize();
       }
     } 
-    environment = environment.enclosing!;
+    environment = environment._enclosing!;
     if (hadError) {
       throw SyntaxError(blockToken, "error while parsing a block.");
     }
@@ -171,20 +163,26 @@ class Parser {
   }
   
   Decl declaration() {
-    return _variableDecl();
+    _consume(.int, "Expect a declaration type `int`.");
+    final identifier = _consume(.identifier, "Expect a declaration identifier.");
+
+    if (_peek().kind == .leftParen) {
+      return _functionDecl(identifier);
+    } else {
+      return _variableDecl(identifier);
+    }
   }
 
-  Decl _variableDecl() {
-    _consume(.int, "Expect a variable type.");
-    Token name = _consume(.identifier, "Expect a variable identifier.");
-
+  Decl _variableDecl(Token name) {
+    
     late final String uniqueName;
-    if (environment.isDefinedInCurScope(name.lexeme)) {
+    final varName = name.lexeme;
+    if (environment.isDeclaredInCurScope(varName)) {
       issues.add((name.location, "Duplicate variable declaration."));
-      uniqueName = environment.get(name.lexeme);
+      uniqueName = environment.get(varName)!;
     } else {
-      uniqueName = _makeTemp(name.lexeme);
-      environment.define(name.lexeme, uniqueName);
+      uniqueName = _makeTemp(varName);
+      environment.declare(identifier: varName, uniqueName: uniqueName);
     }
     
     Expr? init;
@@ -194,6 +192,64 @@ class Parser {
     }
     _consume(.semicolon, "Expect a ';' at the end of a variable declaration.");
     return VariableDecl(name.copyWith(lexeme: uniqueName), init);
+  }
+
+  FunctionDecl _functionDecl([Token? identifier]) {
+    late final Token name; 
+    if (identifier != null) {
+      name = identifier;
+    } else {
+      _consume(.int, "Expect `int` at start of function.");
+      name = _consume(.identifier, "Expect identifier name for function definition.");
+    }
+    
+    if (environment.isDeclaredInCurScope(name.lexeme) && !environment.hasLinkage(name.lexeme)) {
+      issues.add((name.location, "Duplicate declaration"));
+    }
+
+    environment.declare(identifier: name.lexeme, uniqueName: name.lexeme, hasLinkage: true);
+
+    _consume(.leftParen, "Expect '(' openning parameters list.");
+
+    final params = <Token>[]; 
+    if (!_match(.void$)) {
+      do {
+        _consume(.int, "Expect a parameter type `int`.");
+        final name = _consume(.identifier, "Expect a parameter name");
+        params.add(name);
+      } while (_match(.comma));
+    }
+
+    _consume(.rightParen, "Expect ')' closing parameters list.");
+
+    final newEnvionment = Environment(environment);
+    
+    List<Token> newParams = params.map((param) {
+      final paramName = param.lexeme;
+      final uniqueName = _makeTemp(paramName);
+      
+      if (newEnvionment.isDeclaredInCurScope(paramName)) {
+        issues.add((param.location, "Can't have two params with the same name."));
+      } else {
+        newEnvionment.declare(identifier: paramName, uniqueName: uniqueName);
+      }
+
+      return param.copyWith(lexeme: newEnvionment.get(paramName));
+
+    }).toList();
+
+    Block? body;
+    if (_peek().kind == .leftBraces) {
+      if (!environment.isTopLevel) {
+        issues.add((name.location, "nested functions are not allowed."));
+      }
+
+      body = _block(newEnvionment);
+    } else {
+      _consume(.semicolon, "Expect a ';' at the end of a function declaration.");
+    }
+
+    return FunctionDecl(name, newParams, body);
   }
 
   Stmt statement() {
@@ -266,8 +322,7 @@ class Parser {
     return _expressionStmt();
   }
 
-  CompoundStmt _compoundStmt() => 
-    CompoundStmt(_block());
+  CompoundStmt _compoundStmt() => CompoundStmt(_block());
 
   BreakStmt _breakStmt() {
     final token = _consume(.break$, "Expect a 'break' keyword.");
@@ -312,7 +367,7 @@ class Parser {
     final cond = _optExpr(.semicolon);
     final post = _optExpr(.rightParen);
     final body = statement();
-    environment = environment.enclosing!;
+    environment = environment._enclosing!;
 
     return ForStmt(forInit, cond, post, body, "");
   }
@@ -388,7 +443,7 @@ class Parser {
     .xor: PrecedenceRule(infixFn: _binary, precedence: .bxor),
     .or: PrecedenceRule(infixFn: _binary, precedence: .bor),
     .constant: PrecedenceRule(prefixFn: _constant, precedence: .primary),
-    .identifier: PrecedenceRule(prefixFn: _var, precedence: .primary),
+    .identifier: PrecedenceRule(prefixFn: _varOrFuncCall, precedence: .primary),
     .bang: PrecedenceRule(prefixFn: _unary, precedence: .unary),
     .less: PrecedenceRule(infixFn: _binary, precedence: .cmpLessGreater),
     .lessEqual: PrecedenceRule(infixFn: _binary, precedence: .cmpLessGreater),
@@ -471,7 +526,7 @@ class Parser {
     ]);
     
     final nextRule = _rules[operator.kind]!;
-    final rhs = _parsePrecedence(nextRule.precedence + 1);
+    final rhs = _parsePrecedence(nextRule.precedence.oneHigher);
   
     return BinaryExpr(operator, lhs, rhs);
   }
@@ -515,14 +570,35 @@ class Parser {
     return ConstantExpr(constant);
   }
 
-  VarExpr _var() {
+  Expr _varOrFuncCall() {
     final identifier = _consume(.identifier, "Expect an identifier.");
+    final name = identifier.lexeme;
 
-    if (!environment.isDefined(identifier.lexeme)) {
-      issues.add((identifier.location, "undeclared variable '${identifier.lexeme}'"));
+    if (_match(.leftParen)) {
+      List<Expr>? args;
+
+      if (!_match(.rightParen)) {
+        final exprList = <Expr>[];
+        do {
+          exprList.add(expression());
+        } while (_match(.comma));
+        _consume(.rightParen, "Expect a ')' closing function call args list.");
+        args = exprList;
+      }
+
+      if (!environment.isDeclared(name)) {
+        issues.add((identifier.location, "undeclared function '$name'"));
+      }
+      
+      return FunctionCallExpr(identifier.copyWith(lexeme: environment.get(name)), args);
+
+    } else {
+      if (!environment.isDeclared(name)) {
+        issues.add((identifier.location, "undeclared variable '$name'"));
+      }
+
+      return VarExpr(identifier.copyWith(lexeme: environment.get(name)));
     }
-
-    return VarExpr(identifier.copyWith(lexeme: environment.get(identifier.lexeme)));
   }
 
   Expr _assignment(Expr left) {
@@ -630,88 +706,9 @@ class Parser {
     }
   }
   
-  String _makeTemp(String lexeme) => "r.$lexeme.${_varCount++}";
+  String _makeTemp(String lexeme) => "id.$lexeme.${_varCount++}";
   
 }
-
-// class ConstantFolder implements StmtVisitor<Stmt>, ExprVisitor<Expr>, DeclVisitor<Decl>, BlockItemVisitor<BlockItem> {
-//   static ProgramAst transform(ProgramAst program) => ConstantFolder().visitProgram(program);
-  
-//   ProgramAst visitProgram(ProgramAst program) => ProgramAst(function: visitFunction(program.function));
-  
-//   visitFunction(FunctionAst function) => FunctionAst(
-//     name: function.name, 
-//     body: function.body.map((item) => item.accept(this)).toList()
-//   );
-  
-//   @override
-//   Expr visitBinaryExpr(BinaryExpr binaryExpr) {
-//     final lhs = binaryExpr.lhs.accept(this);
-//     final rhs = binaryExpr.rhs.accept(this);
-
-//     if (lhs is ConstantExpr && rhs is ConstantExpr) {
-//       final left = int.parse(lhs.value.lexeme);
-//       final right = int.parse(rhs.value.lexeme);
-//       final result = switch (binaryExpr.operator.kind) {
-//         .plus => left+right,
-//         .hyphen => left-right,
-//         .asterisk => left*right,
-//         .forwardSlash => left/right,
-//         .percent => left%right,
-//         _ => throw Exception("unexpected operator: ${binaryExpr.operator.kind.name}"),
-//       };
-//       return ConstantExpr(Token(.constant, result.toInt().toString(), lhs.value.location));
-//     }
-
-//     return BinaryExpr(binaryExpr.operator, lhs, rhs);
-//   }
-  
-//   @override
-//   Expr visitConstantExpr(ConstantExpr constantExpr) => constantExpr;
-  
-//   @override
-//   Stmt visitReturnStmt(ReturnStmt returnStmt) => ReturnStmt(returnStmt.keyword, returnStmt.expr.accept(this));
-  
-//   @override
-//   Expr visitUnaryExpr(UnaryExpr unaryExpr) {
-//     final operand = unaryExpr.operand.accept(this);
-
-//     if (operand is ConstantExpr) {
-//       final right = int.parse(operand.value.lexeme);
-//       final result = switch (unaryExpr.operator.kind) {
-//         .hyphen => -right,
-//         .tilde => ~right,
-//         _ => throw Exception("unexpected operator: ${unaryExpr.operator.kind.name}"),
-//       };
-//       return ConstantExpr(Token(.constant, result.toString(), operand.value.location));
-//     }
-
-//     return UnaryExpr(unaryExpr.operator, operand);
-//   }
-  
-//   @override
-//   Expr visitAssignmentExpr(AssignmentExpr assignmentExpr) => 
-//     AssignmentExpr(assignmentExpr.lhs.accept(this), assignmentExpr.rhs.accept(this));
-  
-//   @override
-//   Expr visitVarExpr(VarExpr varExpr) => varExpr;
-  
-//   @override
-//   Stmt visitExpressionStmt(ExpressionStmt expressionStmt) => 
-//     ExpressionStmt(expressionStmt.expr.accept(this));
-  
-//   @override
-//   Stmt visitNullStmt(NullStmt nullStmt) => nullStmt;
-  
-//   @override
-//   BlockItem visitDeclBlockItem(DeclBlockItem declBlockItem) => DeclBlockItem(declBlockItem.decl.accept(this));
-  
-//   @override
-//   BlockItem visitStmtBlockItem(StmtBlockItem stmtBlockItem) => StmtBlockItem(stmtBlockItem.stmt.accept(this));
-  
-//   @override
-//   Decl visitVariableDecl(VariableDecl variableDecl) => VariableDecl(variableDecl.name, variableDecl.init?.accept(this));
-// }
 
 class MultiIssues implements Exception {
   final List<(Location, String)> issues;
@@ -749,4 +746,7 @@ class ExprLocationExtractor implements ExprVisitor<Location> {
   
   @override
   Location visitConditionalExpr(ConditionalExpr conditionalExpr) => conditionalExpr.cond.accept(this);
+  
+  @override
+  Location visitFunctionCallExpr(FunctionCallExpr functionCallExpr) => functionCallExpr.identifier.location;
 }

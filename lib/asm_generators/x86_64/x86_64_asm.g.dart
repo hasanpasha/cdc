@@ -1,14 +1,16 @@
 part of 'x86_64_asm.dart';
 
 class X8664FunctionAsm with EquatableMixin {
-  X8664FunctionAsm(this.name, this.instrs);
+  X8664FunctionAsm(this.name, this.instrs, this.allocatedStackSize);
 
   final String name;
 
   final List<X8664Instr> instrs;
 
+  final int allocatedStackSize;
+
   @override
-  List<Object?> get props => [name, instrs];
+  List<Object?> get props => [name, instrs, allocatedStackSize];
 
   @override
   bool? get stringify => true;
@@ -29,6 +31,7 @@ abstract class X8664Instr {
 }
 
 abstract class X8664InstrVisitor<R> {
+  R visitCommentX8664Instr(CommentX8664Instr commentX8664Instr);
   R visitMoveX8664Instr(MoveX8664Instr moveX8664Instr);
   R visitUnaryX8664Instr(UnaryX8664Instr unaryX8664Instr);
   R visitBinaryX8664Instr(BinaryX8664Instr binaryX8664Instr);
@@ -42,7 +45,29 @@ abstract class X8664InstrVisitor<R> {
   R visitAllocateStackX8664Instr(
     AllocateStackX8664Instr allocateStackX8664Instr,
   );
+  R visitDeallocateStackX8664Instr(
+    DeallocateStackX8664Instr deallocateStackX8664Instr,
+  );
+  R visitPushX8664Instr(PushX8664Instr pushX8664Instr);
+  R visitCallX8664Instr(CallX8664Instr callX8664Instr);
   R visitReturnX8664Instr(ReturnX8664Instr returnX8664Instr);
+}
+
+class CommentX8664Instr extends X8664Instr with EquatableMixin {
+  CommentX8664Instr(this.msg);
+
+  final String msg;
+
+  @override
+  List<Object?> get props => [msg];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(X8664InstrVisitor<R> visitor) {
+    return visitor.visitCommentX8664Instr(this);
+  }
 }
 
 class MoveX8664Instr extends X8664Instr with EquatableMixin {
@@ -241,6 +266,57 @@ class AllocateStackX8664Instr extends X8664Instr with EquatableMixin {
   @override
   R accept<R>(X8664InstrVisitor<R> visitor) {
     return visitor.visitAllocateStackX8664Instr(this);
+  }
+}
+
+class DeallocateStackX8664Instr extends X8664Instr with EquatableMixin {
+  DeallocateStackX8664Instr(this.amount);
+
+  final int amount;
+
+  @override
+  List<Object?> get props => [amount];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(X8664InstrVisitor<R> visitor) {
+    return visitor.visitDeallocateStackX8664Instr(this);
+  }
+}
+
+class PushX8664Instr extends X8664Instr with EquatableMixin {
+  PushX8664Instr(this.operand);
+
+  final X8664Operand operand;
+
+  @override
+  List<Object?> get props => [operand];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(X8664InstrVisitor<R> visitor) {
+    return visitor.visitPushX8664Instr(this);
+  }
+}
+
+class CallX8664Instr extends X8664Instr with EquatableMixin {
+  CallX8664Instr(this.identifier);
+
+  final String identifier;
+
+  @override
+  List<Object?> get props => [identifier];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(X8664InstrVisitor<R> visitor) {
+    return visitor.visitCallX8664Instr(this);
   }
 }
 

@@ -1,12 +1,12 @@
 part of 'ast.dart';
 
 class ProgramAst with EquatableMixin {
-  ProgramAst(this.main);
+  ProgramAst(this.functions);
 
-  final FunctionAst main;
+  final List<Decl> functions;
 
   @override
-  List<Object?> get props => [main];
+  List<Object?> get props => [functions];
 
   @override
   bool? get stringify => true;
@@ -18,28 +18,6 @@ class ProgramAst with EquatableMixin {
 
 abstract class ProgramAstVisitor<R> {
   R visitProgramAst(ProgramAst programAst);
-}
-
-class FunctionAst with EquatableMixin {
-  FunctionAst(this.name, this.body);
-
-  final Token name;
-
-  final Block body;
-
-  @override
-  List<Object?> get props => [name, body];
-
-  @override
-  bool? get stringify => true;
-
-  R accept<R>(FunctionAstVisitor<R> visitor) {
-    return visitor.visitFunctionAst(this);
-  }
-}
-
-abstract class FunctionAstVisitor<R> {
-  R visitFunctionAst(FunctionAst functionAst);
 }
 
 class Block with EquatableMixin {
@@ -483,6 +461,7 @@ abstract class Decl {
 
 abstract class DeclVisitor<R> {
   R visitVariableDecl(VariableDecl variableDecl);
+  R visitFunctionDecl(FunctionDecl functionDecl);
 }
 
 class VariableDecl extends Decl with EquatableMixin {
@@ -504,6 +483,27 @@ class VariableDecl extends Decl with EquatableMixin {
   }
 }
 
+class FunctionDecl extends Decl with EquatableMixin {
+  FunctionDecl(this.name, this.params, this.body);
+
+  final Token name;
+
+  final List<Token> params;
+
+  final Block? body;
+
+  @override
+  List<Object?> get props => [name, params, body];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(DeclVisitor<R> visitor) {
+    return visitor.visitFunctionDecl(this);
+  }
+}
+
 abstract class Expr {
   R accept<R>(ExprVisitor<R> visitor) {
     throw UnimplementedError();
@@ -518,6 +518,7 @@ abstract class ExprVisitor<R> {
   R visitBinaryExpr(BinaryExpr binaryExpr);
   R visitAssignmentExpr(AssignmentExpr assignmentExpr);
   R visitConditionalExpr(ConditionalExpr conditionalExpr);
+  R visitFunctionCallExpr(FunctionCallExpr functionCallExpr);
 }
 
 class ConstantExpr extends Expr with EquatableMixin {
@@ -652,5 +653,24 @@ class ConditionalExpr extends Expr with EquatableMixin {
   @override
   R accept<R>(ExprVisitor<R> visitor) {
     return visitor.visitConditionalExpr(this);
+  }
+}
+
+class FunctionCallExpr extends Expr with EquatableMixin {
+  FunctionCallExpr(this.identifier, this.args);
+
+  final Token identifier;
+
+  final List<Expr>? args;
+
+  @override
+  List<Object?> get props => [identifier, args];
+
+  @override
+  bool? get stringify => true;
+
+  @override
+  R accept<R>(ExprVisitor<R> visitor) {
+    return visitor.visitFunctionCallExpr(this);
   }
 }

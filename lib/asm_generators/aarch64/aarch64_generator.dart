@@ -4,9 +4,9 @@ import 'package:cdc/asm_generator.dart';
 import 'package:cdc/asm_generators/aarch64/aarch64_asm.dart';
 import 'package:cdc/tacky_ir.dart';
 
-class AArch64Generator implements AsmGenerator, ProgramIRVisitor<AArch64ProgramASM>, FunctionIRVisitor<AArch64FunctionASM>, InstrVisitor<List<AArch64Instr>>, ValueVisitor<AArch64Operand> {
+class AArch64Generator implements AsmGenerator, ProgramTirVisitor<AArch64ProgramASM>, FunctionTirVisitor<AArch64FunctionASM>, InstrVisitor<List<AArch64Instr>>, ValueVisitor<AArch64Operand> {
   @override
-  ProgramASM generate(ProgramIR program) {
+  ProgramASM generate(ProgramTir program) {
     AArch64ProgramASM programAsm = program.accept(this);
 
     programAsm = PseudoEliminator.transform(programAsm);
@@ -18,12 +18,12 @@ class AArch64Generator implements AsmGenerator, ProgramIRVisitor<AArch64ProgramA
   }
 
   @override
-  AArch64ProgramASM visitProgramIR(ProgramIR program) {
-    return AArch64ProgramASM(program.functionDefinition.accept(this));
+  AArch64ProgramASM visitProgramTir(ProgramTir program) {
+    return AArch64ProgramASM(program.functions.map((func) => func.accept(this)).toList());
   }
   
   @override
-  AArch64FunctionASM visitFunctionIR(FunctionIR functionDefinition) {
+  AArch64FunctionASM visitFunctionTir(FunctionTir functionDefinition) {
     return AArch64FunctionASM(
       functionDefinition.name, 
       functionDefinition.instructions
@@ -133,15 +133,22 @@ class AArch64Generator implements AsmGenerator, ProgramIRVisitor<AArch64ProgramA
   
   @override
   List<AArch64Instr> visitLabelInstr(LabelInstr labelInstr) => [LabelAArch64Instr(labelInstr.value)];
+  
+  @override
+  List<AArch64Instr> visitFunCallInstr(FunCallInstr funCallInstr) {
+    // TODO: implement visitFunCallInstr
+    throw UnimplementedError();
+  }
 }
 
-class MoveMemoryEliminator implements AArch64InstrVisitor<List<AArch64Instr>> {
+class MoveMemoryEliminator implements AArch64FunctionASMVisitor<AArch64FunctionASM>, AArch64InstrVisitor<List<AArch64Instr>> {
   static AArch64ProgramASM transform(AArch64ProgramASM programAsm) => MoveMemoryEliminator().visitProgram(programAsm);
 
   AArch64ProgramASM visitProgram(AArch64ProgramASM programAsm) => 
-    AArch64ProgramASM(visitFunction(programAsm.function));
-    
-  AArch64FunctionASM visitFunction(AArch64FunctionASM function) => 
+    AArch64ProgramASM(programAsm.functions.map((func) => func.accept(this)).toList());
+
+  @override  
+  AArch64FunctionASM visitAArch64FunctionASM(AArch64FunctionASM function) => 
     AArch64FunctionASM(
       function.name,
       function.instructions
@@ -270,12 +277,14 @@ class MoveMemoryEliminator implements AArch64InstrVisitor<List<AArch64Instr>> {
   List<AArch64Instr> visitMoveZAArch64Instr(MoveZAArch64Instr moveZaArch64Instr) => [moveZaArch64Instr];
 }
 
-class InstructionsFixer implements AArch64InstrVisitor<List<AArch64Instr>> {
+class InstructionsFixer implements AArch64FunctionASMVisitor<AArch64FunctionASM>, AArch64InstrVisitor<List<AArch64Instr>> {
   static AArch64ProgramASM transform(AArch64ProgramASM programAsm) => InstructionsFixer().visitProgram(programAsm);
   
-  AArch64ProgramASM visitProgram(AArch64ProgramASM programAsm) => AArch64ProgramASM(visitFunction(programAsm.function));
+  AArch64ProgramASM visitProgram(AArch64ProgramASM programAsm) => 
+    AArch64ProgramASM(programAsm.functions.map((func) => func.accept(this)).toList());
   
-  AArch64FunctionASM visitFunction(AArch64FunctionASM function) => 
+  @override
+  AArch64FunctionASM visitAArch64FunctionASM(AArch64FunctionASM function) => 
     AArch64FunctionASM(
       function.name, 
       function.instructions
@@ -479,7 +488,7 @@ enum IterationKind {
   insertion,
 }
 
-class PseudoEliminator implements AArch64InstrVisitor<List<AArch64Instr>>, AArch64OperandVisitor<AArch64Operand> {
+class PseudoEliminator implements AArch64FunctionASMVisitor<AArch64FunctionASM>, AArch64InstrVisitor<List<AArch64Instr>>, AArch64OperandVisitor<AArch64Operand> {
   final Map<String, int> _variablesOffset = {};
   int _stackOffset = 0;
   IterationKind _iterationKind = .elimination;
@@ -489,9 +498,11 @@ class PseudoEliminator implements AArch64InstrVisitor<List<AArch64Instr>>, AArch
 
   static AArch64ProgramASM transform(AArch64ProgramASM programAsm) => PseudoEliminator().visitProgram(programAsm);
   
-  AArch64ProgramASM visitProgram(AArch64ProgramASM programAsm) => AArch64ProgramASM(visitFunction(programAsm.function));
+  AArch64ProgramASM visitProgram(AArch64ProgramASM programAsm) => 
+    AArch64ProgramASM(programAsm.functions.map((func) => func.accept(this)).toList());
   
-  AArch64FunctionASM visitFunction(AArch64FunctionASM function) {
+  @override
+  AArch64FunctionASM visitAArch64FunctionASM(AArch64FunctionASM function) {
     _stackOffset = 0;
     _variablesOffset.clear();
     
@@ -609,7 +620,10 @@ class PseudoEliminator implements AArch64InstrVisitor<List<AArch64Instr>>, AArch
 }
 
 class ImmediateMovFixer implements AArch64FunctionASMVisitor<AArch64FunctionASM>, AArch64InstrVisitor<List<AArch64Instr>> {
-  static AArch64ProgramASM transform(AArch64ProgramASM programAsm) => AArch64ProgramASM(programAsm.function.accept(ImmediateMovFixer()));
+  static AArch64ProgramASM transform(AArch64ProgramASM programAsm) {
+    final fixer = ImmediateMovFixer();
+    return AArch64ProgramASM(programAsm.functions.map((func) => func.accept(fixer)).toList());
+  }
   
   @override
   AArch64FunctionASM visitAArch64FunctionASM(AArch64FunctionASM aArch64FunctionAsm) => 

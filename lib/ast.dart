@@ -5,13 +5,12 @@ import 'package:equatable/equatable.dart';
 part 'ast.g.dart';
 
 class ASTPrettier
+    with ExprPolishNotation
     implements
         ProgramAstVisitor<String>,
-        FunctionAstVisitor<String>,
         BlockVisitor<String>,
         StmtVisitor<String>,
         ForInitVisitor<String>,
-        ExprVisitor<String>,
         DeclVisitor<String>,
         BlockItemVisitor<String> {
   int level = 0;
@@ -36,13 +35,15 @@ class ASTPrettier
 
   @override
   String visitProgramAst(ProgramAst program) => _withIndent(
-    () => "ProgramAST($_indent${program.main.accept(this)}$_indentLast)",
+    () =>
+        "ProgramAST($_indent${program.functions.map((function) => function.accept(this)).join(_indent)}$_indentLast)",
   );
 
   @override
-  String visitFunctionAst(FunctionAst function) => _withIndent(
+  String visitFunctionDecl(FunctionDecl function) => _withIndent(
     () =>
-        "Function($_indent${function.name.lexeme},$_indent[$_indent${function.body.accept(this)}$_indentLast]$_indentLast)",
+        "Function($_indent${function.name.lexeme},$_indent[$_indent${function.params.map((param) => param.lexeme).join(",$_indent")}$_indent],"
+        "$_indent[$_indent${function.body?.accept(this)}$_indentLast])",
   );
 
   @override
@@ -54,39 +55,6 @@ class ASTPrettier
   @override
   String visitReturnStmt(ReturnStmt ret) =>
       _withIndent(() => "Return($_indent${ret.expr.accept(this)}$_indentLast)");
-
-  @override
-  String visitBinaryExpr(BinaryExpr binary) => _withIndent(
-    () =>
-        "Binary($_indent${binary.operator.kind.name},$_indent${binary.lhs.accept(this)},"
-        "$_indent${binary.rhs.accept(this)}$_indentLast)",
-  );
-
-  @override
-  String visitPrefixUnaryExpr(PrefixUnaryExpr unary) => _withIndent(
-    () =>
-        "PrefixUnary($_indent${unary.operator.kind.name},$_indent${unary.operand.accept(this)}$_indentLast)",
-  );
-
-  @override
-  String visitPostfixUnaryExpr(PostfixUnaryExpr unary) => _withIndent(
-    () =>
-        "PostfixUnary($_indent${unary.operator.kind.name},$_indent${unary.operand.accept(this)}$_indentLast)",
-  );
-
-  @override
-  String visitConstantExpr(ConstantExpr constant) =>
-      _withIndent(() => "Constant(${constant.value.lexeme})");
-
-  @override
-  String visitAssignmentExpr(AssignmentExpr assignmentExpr) => _withIndent(
-    () =>
-        "Assignment($_indent${assignmentExpr.lhs.accept(this)},$_indent${assignmentExpr.rhs.accept(this)}$_indentLast)",
-  );
-
-  @override
-  String visitVarExpr(VarExpr varExpr) =>
-      _withIndent(() => "Var(${varExpr.identifier.lexeme})");
 
   @override
   String visitExpressionStmt(ExpressionStmt expressionStmt) => _withIndent(
@@ -116,12 +84,6 @@ class ASTPrettier
   String visitIfStmt(IfStmt ifStmt) => _withIndent(
     () =>
         "If($_indent${ifStmt.cond.accept(this)},$_indent${ifStmt.then.accept(this)},$_indent${ifStmt.else$?.accept(this)}$_indentLast)",
-  );
-
-  @override
-  String visitConditionalExpr(ConditionalExpr conditionalExpr) => _withIndent(
-    () =>
-        "Conditional($_indent${conditionalExpr.cond.accept(this)},$_indent${conditionalExpr.lhs.accept(this)},$_indent${conditionalExpr.rhs.accept(this)}$_indentLast)",
   );
 
   @override
@@ -190,9 +152,10 @@ class ASTPrettier
         "Switch($_indent${switchStmt.expr.accept(this)},$_indent${switchStmt.body.accept(this)},"
         "$_indent${switchStmt.cases.map((caseStmt) => caseStmt.accept(this))},$_indent${switchStmt.defaultCase?.accept(this)}$_indentLast)",
   );
+
 }
 
-class ExprPolishNotation implements ExprVisitor<String> {
+mixin ExprPolishNotation implements ExprVisitor<String> {
   @override
   String visitBinaryExpr(BinaryExpr binaryExpr) =>
       "(${binaryExpr.operator.lexeme} ${binaryExpr.lhs.accept(this)} ${binaryExpr.rhs.accept(this)})";
@@ -220,4 +183,8 @@ class ExprPolishNotation implements ExprVisitor<String> {
   @override
   String visitConditionalExpr(ConditionalExpr conditionalExpr) =>
       "?: ${conditionalExpr.cond.accept(this)} ${conditionalExpr.lhs.accept(this)} ${conditionalExpr.rhs.accept(this)}";
+      
+  @override
+  String visitFunctionCallExpr(FunctionCallExpr functionCallExpr) =>
+      "${functionCallExpr.identifier.lexeme} ${functionCallExpr.args?.map((arg) => arg.accept(this)).join(" ")}";
 }

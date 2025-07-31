@@ -1,12 +1,15 @@
 
 import 'package:cdc/cdc.dart';
+import 'package:equatable/equatable.dart';
 
 ProgramAst analyze(ProgramAst programAst) {
-  ProgramAst newProgram;
+  ProgramAst newProgram = programAst;
 
   int counter = 0;
-  (counter, newProgram) = LabelsResolver.transform(programAst, counter);
-  (counter, newProgram) = LoopAndSwitchLabeling.transform(programAst, counter);
+  (counter, newProgram) = LabelsResolver.transform(newProgram, counter);
+  (counter, newProgram) = LoopAndSwitchLabeling.transform(newProgram, counter);
+
+  TypeChecker.check(newProgram);
 
   return newProgram;
 }
@@ -17,13 +20,13 @@ enum LabelsResolverStage { labeledStmt, goto }
 
 class LabelsResolver implements 
   ProgramAstVisitor<(Issues, (int, ProgramAst))>,
-  FunctionAstVisitor<FunctionAst>,
+  DeclVisitor<Decl>,
   BlockVisitor<Block>,
   BlockItemVisitor<BlockItem>,
   StmtVisitor<Stmt>,
   ForInitVisitor<ForInit>
 {
-  final Map<String, String> labels = {};
+  Map<String, String> _labels = {};
   LabelsResolverStage _stage = .labeledStmt;
   final Issues _issues = [];
   int _counter = 0;
@@ -42,23 +45,34 @@ class LabelsResolver implements
 
   @override
   (Issues, (int, ProgramAst)) visitProgramAst(ProgramAst program) => 
-    (_issues, (_counter, ProgramAst(program.main.accept(this))));
+    (_issues, (_counter, ProgramAst(program.functions.map((function) => function.accept(this)).toList() )));
 
   @override
-  FunctionAst visitFunctionAst(FunctionAst function) {
-    _stage = .labeledStmt;
-    Block newBody = function.body.accept(this);
-    _stage = .goto;
-    newBody = newBody.accept(this);
+  FunctionDecl visitFunctionDecl(FunctionDecl function) {
+    final prevLabels = _labels;
 
-    return FunctionAst(function.name, newBody);
+    try {
+      _labels = {};
+      _stage = .labeledStmt;
+      Block? newBody = function.body?.accept(this);
+      _stage = .goto;
+      newBody = newBody?.accept(this);
+
+      return FunctionDecl(function.name, function.params, newBody);
+    } finally {
+      _labels = prevLabels;
+    }
   }
+
+  @override
+  VariableDecl visitVariableDecl(VariableDecl variableDecl) => variableDecl;
 
   @override
   Block visitBlock(Block block) => Block(block.items.map((item) => item.accept(this)).toList());
 
   @override
-  BlockItem visitDeclBlockItem(DeclBlockItem declBlockItem) => declBlockItem;
+  BlockItem visitDeclBlockItem(DeclBlockItem declBlockItem) => 
+    DeclBlockItem(declBlockItem.decl.accept(this));
 
   @override
   Stmt visitExpressionStmt(ExpressionStmt expressionStmt) => expressionStmt;
@@ -66,13 +80,13 @@ class LabelsResolver implements
   @override
   Stmt visitGotoStmt(GotoStmt gotoStmt) {
     if (_stage != .goto) return gotoStmt;
-    
-    if (!labels.containsKey(gotoStmt.dest.lexeme)) {
+
+    if (!_labels.containsKey(gotoStmt.dest.lexeme)) {
       _issues.add((gotoStmt.dest.location, "label \"${gotoStmt.dest.lexeme}\" was referenced but not defined"));
       return gotoStmt;
     }
     
-    return GotoStmt(gotoStmt.dest.copyWith(lexeme: labels[gotoStmt.dest.lexeme]));
+    return GotoStmt(gotoStmt.dest.copyWith(lexeme: _labels[gotoStmt.dest.lexeme]));
   }
 
   @override
@@ -81,15 +95,15 @@ class LabelsResolver implements
 
   @override
   Stmt visitLabeledStmtStmt(LabeledStmtStmt labeledStmtStmt) {
-    if (_stage != .labeledStmt) return labeledStmtStmt;
+    if (_stage != .labeledStmt) return LabeledStmtStmt(labeledStmtStmt.label, labeledStmtStmt.stmt.accept(this));
     
-    if (labels.containsKey(labeledStmtStmt.label.lexeme)) {
+    if (_labels.containsKey(labeledStmtStmt.label.lexeme)) {
       _issues.add((labeledStmtStmt.label.location, "duplicate label \"${labeledStmtStmt.label.lexeme}\""));
       return LabeledStmtStmt(labeledStmtStmt.label, labeledStmtStmt.stmt.accept(this));
     }
 
     final uniqueLabel = _makeLabel(labeledStmtStmt.label.lexeme);
-    labels[labeledStmtStmt.label.lexeme] = uniqueLabel;
+    _labels[labeledStmtStmt.label.lexeme] = uniqueLabel;
 
     return LabeledStmtStmt(
       labeledStmtStmt.label.copyWith(lexeme: uniqueLabel),
@@ -147,7 +161,7 @@ class LabelsResolver implements
 
 class LoopAndSwitchLabeling implements 
   ProgramAstVisitor<(Issues, (int, ProgramAst))>,
-  FunctionAstVisitor<FunctionAst>,
+  DeclVisitor<Decl>,
   BlockVisitor<Block>,
   BlockItemVisitor<BlockItem>,
   StmtVisitor<Stmt>,
@@ -155,10 +169,10 @@ class LoopAndSwitchLabeling implements
 {
   final Issues _issues = [];
   int _counter = 0;
-  final labels = Stack<String>();
-  final switchLabels = Stack<String>();
-  final cases = Stack<List<CaseStmt>>();
-  final defaults = Stack<List<DefaultStmt>>();
+  var labels = Stack<String>();
+  var switchLabels = Stack<String>();
+  var cases = Stack<List<CaseStmt>>();
+  var defaults = Stack<List<DefaultStmt>>();
   
   LoopAndSwitchLabeling(int counter): _counter = counter;
 
@@ -175,13 +189,31 @@ class LoopAndSwitchLabeling implements
 
   @override
   (Issues, (int, ProgramAst)) visitProgramAst(ProgramAst program) => 
-    (_issues, (_counter, ProgramAst(program.main.accept(this))));
+    (_issues, (_counter, ProgramAst(program.functions.map((function) => function.accept(this)).toList() )));
 
   @override
-  FunctionAst visitFunctionAst(FunctionAst function) {
-    Block newBody = function.body.accept(this);
-    return FunctionAst(function.name, newBody);
+  FunctionDecl visitFunctionDecl(FunctionDecl function) {
+    final prevLabels = labels;
+    final prevSwitchLabels = switchLabels;
+    final prevCases = cases;
+    final prevDefaults = defaults;
+    try {
+      labels = Stack<String>();
+      switchLabels = Stack<String>();
+      cases = Stack<List<CaseStmt>>();
+      defaults = Stack<List<DefaultStmt>>();
+      Block? newBody = function.body?.accept(this);
+      return FunctionDecl(function.name, function.params, newBody);
+    } finally {
+      labels = prevLabels; 
+      switchLabels = prevSwitchLabels; 
+      cases = prevCases; 
+      defaults = prevDefaults; 
+    }
   }
+
+  @override
+  Decl visitVariableDecl(VariableDecl variableDecl) => variableDecl;
 
   @override
   Block visitBlock(Block block) => Block(block.items.map((item) => item.accept(this)).toList());
@@ -346,6 +378,256 @@ class LoopAndSwitchLabeling implements
 
     return SwitchStmt(switchStmt.expr, body, thisCases, thisDefaults.firstOrNull, label);
   }
+}
+
+abstract class CType with EquatableMixin {
+  @override
+  bool? get stringify => true;
+}
+
+class Int extends CType {
+  @override
+  List<Object?> get props => [];
+}
+
+class Fun extends CType {
+  final int paramCount;
+
+  Fun({required this.paramCount});
+  
+  @override
+  List<Object?> get props => [paramCount];
+}
+
+class SymbolEntry {
+  final CType type;
+  final bool defined;
+
+  SymbolEntry({required this.type, this.defined = false});
+}
+
+class TypeChecker implements 
+  ProgramAstVisitor<Issues>, 
+  BlockVisitor, 
+  BlockItemVisitor,
+  StmtVisitor,
+  DeclVisitor, 
+  ExprVisitor,
+  ForInitVisitor
+{
+  final Map<String, SymbolEntry> _symbols = {};
+  final Issues _issues = [];
+  
+  static void check(ProgramAst program) {
+    final issues = program.accept(TypeChecker());
+    
+    if (issues.isNotEmpty) {
+      throw MultiIssues(issues);
+    }
+  }
+  
+  @override
+  Issues visitProgramAst(ProgramAst programAst) {
+    for (var fun in programAst.functions) {
+      fun.accept(this);
+    }
+    return _issues;
+  }
+  
+  @override
+  visitBlock(Block block) {
+    for (var item in block.items) {
+      item.accept(this);
+    }
+  }
+  
+  @override
+  visitDeclBlockItem(DeclBlockItem declBlockItem) => declBlockItem.decl.accept(this);
+  
+  @override
+  visitStmtBlockItem(StmtBlockItem stmtBlockItem) => stmtBlockItem.stmt.accept(this);
+  
+  @override
+  visitBreakStmt(BreakStmt breakStmt) {}
+  
+  @override
+  visitCaseStmt(CaseStmt caseStmt) => 
+    caseStmt.stmt?.accept(this);
+  
+  @override
+  visitCompoundStmt(CompoundStmt compoundStmt) => 
+    compoundStmt.block.accept(this);
+  
+  @override
+  visitContinueStmt(ContinueStmt continueStmt) {}
+  
+  @override
+  visitDefaultStmt(DefaultStmt defaultStmt) => 
+    defaultStmt.stmt?.accept(this);
+  
+  @override
+  visitDoWhileStmt(DoWhileStmt doWhileStmt) {
+    doWhileStmt.cond.accept(this);
+    doWhileStmt.body.accept(this);
+  }
+  
+  @override
+  visitExpressionStmt(ExpressionStmt expressionStmt) => 
+    expressionStmt.expr.accept(this);
+  
+  @override
+  visitForStmt(ForStmt forStmt) {
+    forStmt.init.accept(this);
+    forStmt.cond?.accept(this);
+    forStmt.post?.accept(this);
+    forStmt.body.accept(this);
+  }
+  
+  @override
+  visitGotoStmt(GotoStmt gotoStmt) {}
+  
+  @override
+  visitIfStmt(IfStmt ifStmt) {
+    ifStmt.cond.accept(this);
+    ifStmt.then.accept(this);
+    ifStmt.else$?.accept(this);
+  }
+  
+  @override
+  visitLabeledStmtStmt(LabeledStmtStmt labeledStmtStmt) => 
+    labeledStmtStmt.stmt.accept(this);
+  
+  @override
+  visitNullStmt(NullStmt nullStmt) {}
+  
+  @override
+  visitReturnStmt(ReturnStmt returnStmt) {
+    returnStmt.expr.accept(this);
+  }
+  
+  @override
+  visitSwitchStmt(SwitchStmt switchStmt) {
+    switchStmt.expr.accept(this);
+    switchStmt.body.accept(this);
+  }
+  
+  @override
+  visitWhileStmt(WhileStmt whileStmt) {
+    whileStmt.cond.accept(this);
+    whileStmt.body.accept(this);
+  }
+  
+  @override
+  visitFunctionDecl(FunctionDecl functionDecl) {
+    final funType = Fun(paramCount: functionDecl.params.length);
+    final hasBody = functionDecl.body != null;
+    bool alreadyDefined = false;
+
+    if (_symbols.containsKey(functionDecl.name.lexeme)) {
+      final oldDecl = _symbols[functionDecl.name.lexeme]!;
+      if (oldDecl.type != funType) {
+        _issues.add((functionDecl.name.location, "Incompatible function declaration."));
+      }
+      
+      alreadyDefined = oldDecl.defined;
+      if (alreadyDefined && hasBody) {
+        _issues.add((functionDecl.name.location, "Function is defined more than once."));
+      }
+    }
+
+    _symbols[functionDecl.name.lexeme] = SymbolEntry(type: funType, defined: alreadyDefined || hasBody);
+
+    if (hasBody) {
+      for (var param in functionDecl.params) {
+        _symbols[param.lexeme] = SymbolEntry(type: Int());
+      }
+
+      functionDecl.body?.accept(this);
+    }
+  }
+  
+  @override
+  visitVariableDecl(VariableDecl variableDecl) {
+    _symbols[variableDecl.name.lexeme] = SymbolEntry(type: Int());
+    variableDecl.init?.accept(this);
+  }
+  
+  @override
+  visitAssignmentExpr(AssignmentExpr assignmentExpr) {
+    assignmentExpr.lhs.accept(this);
+    assignmentExpr.rhs.accept(this);
+  }
+  
+  @override
+  visitBinaryExpr(BinaryExpr binaryExpr) {
+    binaryExpr.lhs.accept(this);
+    binaryExpr.rhs.accept(this);
+  }
+  
+  @override
+  visitConditionalExpr(ConditionalExpr conditionalExpr) {
+    conditionalExpr.cond.accept(this);
+    conditionalExpr.lhs.accept(this);
+    conditionalExpr.rhs.accept(this);
+  }
+  
+  @override
+  visitConstantExpr(ConstantExpr constantExpr) {
+  }
+  
+  @override
+  visitFunctionCallExpr(FunctionCallExpr functionCallExpr) {
+    final decl = _symbols[functionCallExpr.identifier.lexeme]!;
+    final funType = decl.type;
+
+    if (funType is Int) {
+      _issues.add((functionCallExpr.identifier.location, "Variable used as function name."));
+    }
+
+    if (funType is Fun && funType.paramCount != (functionCallExpr.args?.length ?? 0)) {
+      _issues.add((functionCallExpr.identifier.location, "Function called with the wrong number of arguments."));
+    }
+
+    for (final arg in functionCallExpr.args ?? <Expr>[]) {
+      arg.accept(this);
+    }
+
+  }
+  
+  @override
+  visitPostfixUnaryExpr(PostfixUnaryExpr postfixUnaryExpr) {
+    postfixUnaryExpr.operand.accept(this);
+  }
+  
+  @override
+  visitPrefixUnaryExpr(PrefixUnaryExpr prefixUnaryExpr) {
+    prefixUnaryExpr.operand.accept(this);
+  }
+  
+  @override
+  visitVarExpr(VarExpr varExpr) {
+    final type = _symbols[varExpr.identifier.lexeme]!;
+    if (type.type is! Int) {
+      _issues.add((varExpr.identifier.location, "Function name used as variable"));
+    }
+  }
+  
+  @override
+  visitInitDeclForInit(InitDeclForInit initDeclForInit) {
+    if (initDeclForInit.decl is FunctionDecl) {
+      final location = (initDeclForInit.decl as FunctionDecl).name.location;
+      _issues.add((location, "Function declarations aren't permitted in for loop headers."));
+    }
+    
+    initDeclForInit.decl.accept(this);
+  }
+  
+  @override
+  visitInitExpForInit(InitExpForInit initExpForInit) {
+    initExpForInit.expr?.accept(this);
+  }
+  
+
 }
 
 class Stack<E> {

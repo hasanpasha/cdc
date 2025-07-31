@@ -1,6 +1,24 @@
+int result(int i, int j)
+{
+    return i + j;
+}
+
+int putchar(int c);
 int main(void) {
-    int a = 2147483646;
-    int b = 0;
-    int c = a / 6 + !b;
-    return c * 2 == a - 1431655762;
+    putchar(72);
+    putchar(101);
+    putchar(108);
+    putchar(108);
+    putchar(111);
+    putchar(44);
+    putchar(32);
+    putchar(87);
+    putchar(111);
+    putchar(114);
+    putchar(108);
+    putchar(100);
+    putchar(33);
+    putchar(10);
+
+    return result(1, 2);
 }

@@ -10,13 +10,7 @@
     "scheme": {
         "ProgramAst": {
             "ProgramAst": {
-                "main": "FunctionAst"
-            }
-        },
-        "FunctionAst": {
-            "FunctionAst": {
-                "name": "Token",
-                "body": "Block"
+                "functions": "List<Decl>"
             }
         },
         "Block": {
@@ -112,6 +106,11 @@
             "Variable": {
                 "name": "Token",
                 "init": "Expr?"
+            },
+            "Function": {
+                "name": "Token",
+                "params": "List<Token>",
+                "body": "Block?"
             }
         },
         "Expr": {
@@ -143,6 +142,10 @@
                 "cond": "Expr",
                 "lhs": "Expr",
                 "rhs": "Expr"
+            },
+            "FunctionCall": {
+                "identifier": "Token",
+                "args": "List<Expr>?"
             }
         }
     }

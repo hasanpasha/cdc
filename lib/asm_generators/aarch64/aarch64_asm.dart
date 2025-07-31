@@ -7,15 +7,16 @@ import 'package:equatable/equatable.dart';
 part 'aarch64_asm.g.dart';
 
 class AArch64ProgramASM implements ProgramASM {
-  final AArch64FunctionASM function;
+  final List<AArch64FunctionASM> functions;
 
-  AArch64ProgramASM(this.function);
+  AArch64ProgramASM(this.functions);
   
   @override
   String emit({bool pic = true}) => AArch64AsmEmitter.emit(this, pic: pic);
 
   @override
-  String toString() => "AArch64ProgramASM($function)";
+  String toString() =>
+      "AArch64ProgramASM(${functions.map((function) => function.toString()).join(", ")})";
   
   @override
   Future<void> compile(Uri output, {bool preserveAsmFile = false}) async {
@@ -35,7 +36,11 @@ class AArch64ProgramASM implements ProgramASM {
   }
 }
 
-class AArch64AsmEmitter implements AArch64InstrVisitor<String>, AArch64OperandVisitor<String> {
+class AArch64AsmEmitter
+    implements
+        AArch64FunctionASMVisitor<String>,
+        AArch64InstrVisitor<String>,
+        AArch64OperandVisitor<String> {
   final bool pic;
 
   AArch64AsmEmitter({required this.pic});
@@ -48,10 +53,11 @@ class AArch64AsmEmitter implements AArch64InstrVisitor<String>, AArch64OperandVi
   String visitProgram(AArch64ProgramASM aArch64ProgramASM) => 
 """
 .text
-${visitFunction(aArch64ProgramASM.function)}
+${aArch64ProgramASM.functions.map((function) => function.accept(this)).join("\n")}
 """;
 
-  visitFunction(AArch64FunctionASM function) =>
+  @override
+  String visitAArch64FunctionASM(AArch64FunctionASM function) =>
 """
 .global ${function.name}
 ${function.name}:

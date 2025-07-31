@@ -60,7 +60,7 @@ class ExpandedCFile with Deletable {
     return analyze(program);
   }
 
-  Future<ProgramIR> irgen() async {
+  Future<ProgramTir> irgen() async {
     final analyzedProgram = await validate();
     return TackyIRGenerator.generate(analyzedProgram);
   }
