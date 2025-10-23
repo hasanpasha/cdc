@@ -201,7 +201,7 @@ class X8664Linker implements Linker {
     final linker = Uri.file(freestanding ? '/opt/cross/bin/x86_64-elf-gcc' : '/usr/bin/x86_64-linux-gnu-gcc');
 
     final args = [
-      objects.map((e) => e.path.path).join(" "),
+      ...objects.map((e) => e.path.path),
       '-o',
       outputPath,
       if (linkerScript != null) ...[
@@ -249,7 +249,7 @@ class AArch64Linker implements Linker {
     final linker = Uri.file(freestanding ? '/opt/cross/bin/aarch64-elf-gcc' : '/usr/bin/aarch64-linux-gnu-gcc-14');
 
     final args = [
-      objects.map((e) => e.path.path).join(" "),
+      ...objects.map((e) => e.path.path),
       '-o',
       outputPath,
       if (linkerScript != null) ...[
